@@ -1,6 +1,6 @@
 // Service worker : garde l'application disponible hors ligne.
-const CACHE = "mopila-v1";
-const FICHIERS = ["./", "index.html", "css/style.css", "js/app.js", "js/config.js", "manifest.webmanifest", "icon.svg"];
+const CACHE = "mopila-v2";
+const FICHIERS = const FICHIERS = ["./", "index.html", "style.css", "app.js", "config.js", "manifest.webmanifest", "icon.svg"];
 
 self.addEventListener("install", (e) => {
   e.waitUntil(caches.open(CACHE).then((c) => c.addAll(FICHIERS)).then(() => self.skipWaiting()));
