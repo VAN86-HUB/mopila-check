@@ -20,6 +20,8 @@
   const CACHE_KEY = "mopila_grille_v1";
 
   const etat = { session: null, profil: null, lieux: [], communes: [], tarifs: [], scanner: null };
+  // Le lien « mot de passe oublié » revient avec #…type=recovery dans l’adresse
+  const RETOUR_RECUPERATION = /type=recovery/.test(location.hash);
 
   /* ---------- Outils ---------- */
   const esc = (v) => String(v ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]));
@@ -36,7 +38,22 @@
     clearTimeout(toast._t);
     toast._t = setTimeout(() => (t.hidden = true), 4000);
   }
-  function erreur(e) { console.error(e); toast(e?.message || "Une erreur est survenue.", true); }
+  const ERREURS_FR = [
+    [/invalid login credentials/i, "E-mail ou mot de passe incorrect. Vérifiez les majuscules, ou touchez « Mot de passe oublié ? »."],
+    [/email not confirmed/i, "Votre e-mail n’est pas encore confirmé : ouvrez le lien reçu par e-mail (regardez aussi dans les spams), ou demandez à l’administrateur de le confirmer."],
+    [/rate limit|too many requests|security purposes/i, "Trop d’essais ou d’e-mails envoyés. Patientez un moment (jusqu’à une heure) avant de réessayer, ou contactez l’administrateur."],
+    [/already registered|already been registered|user already exists/i, "Un compte existe déjà avec cet e-mail : connectez-vous, ou touchez « Mot de passe oublié ? »."],
+    [/password should be at least|password.*(short|weak)/i, "Le mot de passe doit contenir au moins 6 caractères."],
+    [/unable to validate email|invalid email|email address .* is invalid/i, "Cette adresse e-mail n’est pas valide."],
+    [/same password|different from the old/i, "Choisissez un mot de passe différent de l’ancien."],
+    [/failed to fetch|network/i, "Pas de connexion internet. Réessayez quand le réseau revient."]
+  ];
+  function erreur(e) {
+    console.error(e);
+    const m = e?.message || "";
+    const fr = ERREURS_FR.find(([re]) => re.test(m));
+    toast(fr ? fr[1] : m || "Une erreur est survenue.", true);
+  }
 
   function lieuNom(id) { return etat.lieux.find((l) => l.id === Number(id))?.nom || "—"; }
   function optionsLieux(sel) {
@@ -593,8 +610,22 @@
     return `<span class="badge ${cls}">${STATUTS_SIG[s] || s}</span>`;
   }
 
+  const champMdp = (id, label, auto) => `<label for="${id}">${label}</label>
+    <div class="mdp-zone"><input id="${id}" type="password" required minlength="6" autocomplete="${auto}" autocapitalize="off" autocorrect="off" spellcheck="false">
+    <button type="button" class="oeil" data-pour="${id}" aria-label="Afficher le mot de passe">👁️</button></div>`;
+  function activerYeux() {
+    app.querySelectorAll(".oeil").forEach((b) => b.addEventListener("click", () => {
+      const i = $("#" + b.dataset.pour);
+      const voir = i.type === "password";
+      i.type = voir ? "text" : "password";
+      b.textContent = voir ? "🙈" : "👁️";
+    }));
+  }
+
   function vueConnexion() {
     const p = params();
+    if (p.mode === "oubli") return vueMotDePasseOublie();
+    if (p.mode === "nouveau") return vueNouveauMotDePasse();
     const inscription = p.mode === "inscription";
     app.innerHTML = `
       <p class="eyebrow">Mon compte</p>
@@ -605,20 +636,25 @@
           <label for="tel">Téléphone</label><input id="tel" inputmode="tel" placeholder="+243…">
           <label for="role">Je suis</label>
           <select id="role"><option value="client">Client (passager)</option><option value="chauffeur">Chauffeur</option><option value="proprietaire">Propriétaire de véhicules</option></select>` : ""}
-        <label for="email">E-mail</label><input id="email" type="email" required autocomplete="email">
-        <label for="mdp">Mot de passe</label><input id="mdp" type="password" required minlength="6" autocomplete="${inscription ? "new-password" : "current-password"}">
+        <label for="email">E-mail</label><input id="email" type="email" required autocomplete="email" autocapitalize="off" inputmode="email">
+        ${champMdp("mdp", "Mot de passe", inscription ? "new-password" : "current-password")}
+        ${inscription ? `<p class="muted" style="margin-top:6px">Au moins 6 caractères. Touchez 👁️ pour voir ce que vous tapez.</p>
+          ${champMdp("mdp2", "Retapez le mot de passe", "new-password")}` : ""}
         <button class="btn" id="valider">${inscription ? "Créer mon compte" : "Se connecter"}</button>
+        ${inscription ? "" : `<p style="text-align:center;margin:14px 0 0"><a href="#/compte?mode=oubli">Mot de passe oublié ?</a></p>`}
       </form>
       <p style="text-align:center">${inscription
         ? `Déjà inscrit ? <a href="#/compte">Se connecter</a>`
         : `Pas encore de compte ? <a href="#/compte?mode=inscription">Créer un compte</a>`}</p>`;
+    activerYeux();
 
     $("#form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const b = $("#valider"); b.disabled = true;
       try {
-        const email = $("#email").value.trim(), password = $("#mdp").value;
+        const email = $("#email").value.trim().toLowerCase(), password = $("#mdp").value;
         if (inscription) {
+          if (password !== $("#mdp2").value) throw new Error("Les deux mots de passe ne sont pas identiques.");
           const { data, error } = await sb.auth.signUp({
             email, password,
             options: {
@@ -627,7 +663,16 @@
             }
           });
           if (error) throw error;
-          if (!data.session) { toast("Compte créé. Ouvrez l’e-mail de confirmation, puis connectez-vous."); location.hash = "#/compte"; return; }
+          if (data.user && Array.isArray(data.user.identities) && data.user.identities.length === 0) throw new Error("User already registered");
+          if (!data.session) {
+            app.innerHTML = `<div class="card accent apparition" style="text-align:center">
+              <div style="font-size:64px">📧</div><h1>Compte créé !</h1>
+              <p>Un e-mail de confirmation a été envoyé à <b>${esc(email)}</b>.</p>
+              <p class="muted">Ouvrez-le et touchez le lien, puis revenez vous connecter. Regardez aussi dans les <b>spams</b>.
+              Si rien n’arrive, demandez à l’administrateur de confirmer votre compte.</p>
+              <a class="btn" href="#/compte">Se connecter</a></div>`;
+            return;
+          }
         } else {
           const { error } = await sb.auth.signInWithPassword({ email, password });
           if (error) throw error;
@@ -638,6 +683,55 @@
         const cible = p.retour ? decodeURIComponent(p.retour) : "#/verifier";
         if (location.hash === cible) route(); else location.hash = cible;
       } catch (err) { erreur(err); } finally { b.disabled = false; }
+    });
+  }
+
+  function vueMotDePasseOublie() {
+    app.innerHTML = `
+      <p class="eyebrow">Mon compte</p>
+      <h1>Mot de passe oublié</h1>
+      <form class="card" id="form">
+        <p class="muted">Entrez l’e-mail de votre compte : vous recevrez un lien pour choisir un nouveau mot de passe.</p>
+        <label for="email">E-mail</label><input id="email" type="email" required autocomplete="email" autocapitalize="off" inputmode="email">
+        <button class="btn" id="valider">Recevoir le lien</button>
+      </form>
+      <p style="text-align:center"><a href="#/compte">← Retour à la connexion</a></p>`;
+    $("#form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const b = $("#valider"); b.disabled = true;
+      const email = $("#email").value.trim().toLowerCase();
+      const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo: location.origin + location.pathname });
+      b.disabled = false;
+      if (error) return erreur(error);
+      app.innerHTML = `<div class="card accent apparition" style="text-align:center">
+        <div style="font-size:64px">📧</div><h1>E-mail envoyé</h1>
+        <p>Si un compte existe pour <b>${esc(email)}</b>, un lien vient d’être envoyé.</p>
+        <p class="muted">Ouvrez-le sur ce téléphone et choisissez votre nouveau mot de passe. Regardez aussi dans les spams.</p>
+        <a class="btn ligne" href="#/compte">Retour à la connexion</a></div>`;
+    });
+  }
+
+  function vueNouveauMotDePasse() {
+    if (!etat.session) { toast("Le lien a expiré : demandez-en un nouveau.", true); location.hash = "#/compte?mode=oubli"; return; }
+    app.innerHTML = `
+      <p class="eyebrow">Mon compte</p>
+      <h1>Nouveau mot de passe</h1>
+      <form class="card" id="form">
+        ${champMdp("mdp", "Nouveau mot de passe", "new-password")}
+        ${champMdp("mdp2", "Retapez le nouveau mot de passe", "new-password")}
+        <button class="btn jaune" id="valider">Enregistrer</button>
+      </form>`;
+    activerYeux();
+    $("#form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if ($("#mdp").value !== $("#mdp2").value) return erreur({ message: "Les deux mots de passe ne sont pas identiques." });
+      const b = $("#valider"); b.disabled = true;
+      const { error } = await sb.auth.updateUser({ password: $("#mdp").value });
+      b.disabled = false;
+      if (error) return erreur(error);
+      journaliser("mot de passe changé");
+      toast("Mot de passe enregistré. Vous êtes connecté.");
+      location.hash = "#/verifier";
     });
   }
 
@@ -1294,7 +1388,7 @@
       <div class="row"><input id="fu" placeholder="Nom, e-mail ou téléphone"><select id="fr"><option value="">Tous les accès</option>${Object.entries(ROLES).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select></div>
       <ul class="liste" id="lu" style="margin-top:8px">${data.map((u) => `
       <li data-q="${esc(((u.nom || "") + " " + (u.email || "") + " " + (u.telephone || "")).toLowerCase())}" data-r="${u.role}">
-        <div class="ligne-haut"><b>${esc(u.nom || "Sans nom")}</b>${u.email_confirme ? "" : '<span class="badge att">E-mail non confirmé</span>'}</div>
+        <div class="ligne-haut"><b>${esc(u.nom || "Sans nom")}</b>${u.email_confirme ? "" : `<button class="btn petit jaune confirmer" data-id="${u.id}" type="button">✔ Confirmer l’e-mail</button>`}</div>
         <div class="muted">${esc(u.email || "")}${u.telephone ? " · " + esc(u.telephone) : ""}</div>
         <div class="muted">Inscrit le ${dateFr(u.inscrit_le)} · dernière connexion : ${u.derniere_connexion ? dateFr(u.derniere_connexion) : "jamais"}</div>
         <div class="muted">${u.actions_7j} action(s) ces 7 jours${u.dernier_ecran ? " · dernière : " + esc(u.dernier_ecran) : ""}</div>
@@ -1306,6 +1400,13 @@
     };
     $("#fu").addEventListener("input", filtrer);
     $("#fr").addEventListener("change", filtrer);
+    zone.querySelectorAll(".confirmer").forEach((b) => b.addEventListener("click", async () => {
+      const { error } = await sb.rpc("confirmer_email", { p_utilisateur: b.dataset.id });
+      if (error) return erreur(error);
+      journaliser("e-mail confirmé par l’administrateur");
+      b.outerHTML = '<span class="badge ok">E-mail confirmé</span>';
+      toast("E-mail confirmé : la personne peut maintenant se connecter.");
+    }));
     zone.querySelectorAll(".role").forEach((s) => s.addEventListener("change", async () => {
       const { error } = await sb.from("profils").update({ role: s.value }).eq("id", s.dataset.id);
       if (error) return erreur(error);
@@ -1543,7 +1644,9 @@
       .tabbar a .pastille{position:absolute;top:2px;left:calc(50% + 6px)}
       .tabbar a.tab-scan .pastille{display:none}
       .onglets button .pastille{margin-left:6px;box-shadow:none}
-      .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}`;
+      .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}
+      .mdp-zone{position:relative}.mdp-zone input{padding-right:52px}
+      .oeil{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:none;background:none;font-size:20px;cursor:pointer}`;
     document.head.appendChild(st);
   })();
 
@@ -1632,6 +1735,7 @@
       return;
     }
     // Personne connectée : la première page est la vérification du QR code.
+    if (etat.session && demande === "compte" && params().mode === "nouveau") { try { await vueNouveauMotDePasse(); } catch (e) { erreur(e); } return; }
     const nom = VUES[demande] ? demande : "verifier";
     document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === nom));
     try { await VUES[nom](); } catch (e) { erreur(e); }
@@ -1654,9 +1758,11 @@
     await Promise.all([chargerGrille(), chargerProfil(), new Promise((r) => setTimeout(r, 900))]);
     await montrerIntro();
     sb.auth.onAuthStateChange(async (evt) => {
+      if (evt === "PASSWORD_RECOVERY") { await chargerProfil(); location.hash = "#/compte?mode=nouveau"; return; }
       if (evt === "SIGNED_IN" || evt === "SIGNED_OUT") { await chargerProfil(); majTabbar(); if (evt === "SIGNED_OUT") route(); }
     });
     window.addEventListener("hashchange", route);
+    if (RETOUR_RECUPERATION && etat.session) location.replace("#/compte?mode=nouveau");
     route();
     verifierNouvelles();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
