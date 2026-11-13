@@ -54,7 +54,19 @@
     const q = location.hash.split("?")[1] || "";
     return Object.fromEntries(new URLSearchParams(q));
   }
-  function aRole(...roles) { return etat.profil && roles.includes(etat.profil.role); }
+  /* Mode test : l’administrateur peut voir l’application comme un client, un chauffeur ou un propriétaire. */
+  const PERSONA_KEY = "mopila_persona";
+  function estVraiAdmin() { return etat.profil?.role === "admin"; }
+  function roleVue() {
+    if (!etat.profil) return null;
+    if (estVraiAdmin()) {
+      let p = null;
+      try { p = localStorage.getItem(PERSONA_KEY); } catch (_) { /* stockage indisponible */ }
+      return ["client", "chauffeur", "proprietaire", "agent", "admin"].includes(p) ? p : "admin";
+    }
+    return etat.profil.role;
+  }
+  function aRole(...roles) { return !!etat.profil && roles.includes(roleVue()); }
 
   /* ---------- Grille (avec cache hors ligne) ---------- */
   async function chargerGrille() {
@@ -278,7 +290,7 @@
       <p class="eyebrow">Mon compte</p>
       <h1>Bonjour ${esc(p.nom || "")}</h1>
       <div class="card">
-        <p><b>Rôle :</b> ${ROLES[p.role] || "—"}</p>
+        <p><b>Rôle :</b> ${ROLES[p.role] || "—"}${estVraiAdmin() && roleVue() !== "admin" ? ` · <span class="badge att">Mode test : ${ROLES[roleVue()]}</span>` : ""}</p>
         <form id="profil">
           <label for="nom">Nom</label><input id="nom" value="${esc(p.nom || "")}">
           <label for="tel">Téléphone</label><input id="tel" value="${esc(p.telephone || "")}" inputmode="tel">
@@ -362,6 +374,7 @@
     if (!etat.session) return besoinConnexion("Espace chauffeur");
     if (!aRole("chauffeur")) { app.innerHTML = `<div class="card">Cet espace est réservé aux chauffeurs.</div>`; return; }
     const uid = etat.session.user.id;
+    if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
     const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
     const [conf, docs, aff, courses] = await Promise.all([
       sb.rpc("chauffeur_est_conforme", { p_chauffeur: uid }),
@@ -605,13 +618,75 @@
   }
 
   async function adminVehicules(zone) {
-    const { data, error } = await sb.from("vehicules").select("id, plaque, mode, agree, qr_code").order("agree").order("plaque");
-    if (error) throw error;
-    zone.innerHTML = `<div class="card"><input id="filtre" placeholder="Rechercher une plaque">
-      <ul class="liste" id="lv">${data.map((v) => `
-        <li data-p="${esc(v.plaque)}"><div class="ligne-haut"><b>${esc(v.plaque)}</b>
-        <button class="btn petit ${v.agree ? "ligne" : "jaune"} agr" data-id="${v.id}" data-a="${v.agree}">${v.agree ? "Retirer l’agrément" : "Agréer"}</button></div>
-        <div class="muted">${MODES[v.mode]} · <a href="${esc(lienQR(v.qr_code))}" target="_blank" rel="noopener">fiche publique</a></div></li>`).join("") || '<li class="muted">Aucun véhicule.</li>'}</ul></div>`;
+    const uid = etat.session.user.id;
+    if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
+    const [vr, pr, cr] = await Promise.all([
+      sb.from("vehicules").select("id, plaque, mode, agree, qr_code, proprietaire_id, affectations(chauffeur_id, actif)").order("created_at", { ascending: false }),
+      sb.from("profils").select("id, nom, role").in("role", ["proprietaire", "admin"]).order("nom"),
+      sb.from("chauffeurs").select("id, profils(nom)")
+    ]);
+    if (vr.error) throw vr.error;
+    const proprios = pr.data || [];
+    const chauffeurs = (cr.data || []).map((c) => ({ id: c.id, nom: c.profils?.nom || "Chauffeur" }));
+    const nomDe = (liste, id) => liste.find((x) => x.id === id)?.nom || "—";
+    const moi = (id) => (id === uid ? " (moi)" : "");
+    const optProprios = proprios.map((p) => `<option value="${p.id}" ${p.id === uid ? "selected" : ""}>${esc(p.nom || "Sans nom")}${moi(p.id)}</option>`).join("");
+    const optChauffeurs = (sel) => '<option value="">— Aucun chauffeur —</option>' + chauffeurs.map((c) => `<option value="${c.id}" ${c.id === sel ? "selected" : ""}>${esc(c.nom)}${moi(c.id)}</option>`).join("");
+
+    zone.innerHTML = `
+      <form class="card accent" id="fveh">
+        <h2>Enregistrer un véhicule et créer son QR code</h2>
+        <div class="row">
+          <div><label for="vplaque">Plaque</label><input id="vplaque" required placeholder="Ex. 1234AB01"></div>
+          <div><label for="vmode">Type</label><select id="vmode">${optionsModes("taxi_bus")}</select></div>
+        </div>
+        <label for="vprop">Propriétaire</label><select id="vprop" required>${optProprios}</select>
+        <label for="vchauf">Chauffeur affecté</label><select id="vchauf">${optChauffeurs(null)}</select>
+        <label style="font-weight:400"><input type="checkbox" id="vagree" checked style="width:auto"> Véhicule agréé dès maintenant</label>
+        <button class="btn jaune">Enregistrer et générer le QR code</button>
+      </form>
+      <div class="card">
+        <h2>Véhicules (${vr.data.length})</h2>
+        <input id="filtre" placeholder="Rechercher une plaque">
+        <ul class="liste" id="lv">${vr.data.map((v) => {
+          const aff = (v.affectations || []).find((a) => a.actif);
+          return `<li data-p="${esc(v.plaque)}">
+            <div class="ligne-haut"><b>${esc(v.plaque)}</b><span class="badge ${v.agree ? "ok" : "att"}">${v.agree ? "Agréé" : "Non agréé"}</span></div>
+            <div class="muted">${MODES[v.mode]} · propriétaire : ${esc(nomDe(proprios, v.proprietaire_id))}${moi(v.proprietaire_id)}</div>
+            <label>Chauffeur</label>
+            <select class="chauf" data-id="${v.id}">${optChauffeurs(aff?.chauffeur_id)}</select>
+            <div class="row" style="margin-top:8px">
+              <button class="btn petit ${v.agree ? "ligne" : "jaune"} agr" data-id="${v.id}" data-a="${v.agree}">${v.agree ? "Retirer l’agrément" : "Agréer"}</button>
+              <button class="btn petit ligne voirqr" data-id="${v.id}">QR code</button>
+            </div>
+            <div class="zone-qr" id="qr-${v.id}" hidden style="margin-top:10px;text-align:center">
+              <div class="qr-box" data-qr="${esc(lienQR(v.qr_code))}"></div>
+              <p class="muted">${esc(v.plaque)} · ${MODES[v.mode]}</p>
+              <div class="row">
+                <button class="btn petit imprimer" data-id="${v.id}" data-plaque="${esc(v.plaque)}" data-mode="${MODES[v.mode]}">🖨️ Imprimer la fiche</button>
+                <a class="btn petit ligne" href="#/verifier?v=${encodeURIComponent(v.qr_code)}">Tester le scan</a>
+              </div>
+            </div></li>`;
+        }).join("") || '<li class="muted">Aucun véhicule.</li>'}</ul>
+      </div>`;
+
+    $("#fveh").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const plaque = $("#vplaque").value.trim().toUpperCase().replace(/\s+/g, "");
+      const { data: v, error } = await sb.from("vehicules")
+        .insert({ plaque, mode: $("#vmode").value, proprietaire_id: $("#vprop").value, agree: $("#vagree").checked })
+        .select("id").single();
+      if (error) return erreur(error.code === "23505" ? { message: "Cette plaque est déjà enregistrée." } : error);
+      if ($("#vchauf").value) {
+        const r = await sb.from("affectations").insert({ vehicule_id: v.id, chauffeur_id: $("#vchauf").value });
+        if (r.error) erreur(r.error);
+      }
+      journaliser("véhicule enregistré", plaque);
+      toast("Véhicule enregistré, QR code créé.");
+      await adminVehicules(zone);
+      const z = zone.querySelector(`#qr-${v.id}`);
+      if (z) { z.hidden = false; dessinerQR(z); z.scrollIntoView({ behavior: "smooth", block: "center" }); }
+    });
     $("#filtre").addEventListener("input", (e) => {
       const q = e.target.value.toUpperCase().replace(/\s/g, "");
       zone.querySelectorAll("#lv li[data-p]").forEach((li) => (li.hidden = !li.dataset.p.toUpperCase().replace(/\s/g, "").includes(q)));
@@ -621,6 +696,45 @@
       if (error) return erreur(error);
       adminVehicules(zone);
     }));
+    zone.querySelectorAll(".chauf").forEach((s) => s.addEventListener("change", async () => {
+      const vid = Number(s.dataset.id);
+      const r1 = await sb.from("affectations").update({ actif: false, fin: new Date().toISOString() }).eq("vehicule_id", vid).eq("actif", true);
+      if (r1.error) return erreur(r1.error);
+      if (s.value) {
+        const r2 = await sb.from("affectations").insert({ vehicule_id: vid, chauffeur_id: s.value });
+        if (r2.error) return erreur(r2.error);
+      }
+      toast(s.value ? "Chauffeur affecté." : "Chauffeur retiré.");
+    }));
+    zone.querySelectorAll(".voirqr").forEach((b) => b.addEventListener("click", () => {
+      const z = zone.querySelector(`#qr-${b.dataset.id}`);
+      z.hidden = !z.hidden;
+      if (!z.hidden) dessinerQR(z);
+    }));
+    zone.querySelectorAll(".imprimer").forEach((b) => b.addEventListener("click", () => {
+      const canvas = zone.querySelector(`#qr-${b.dataset.id} canvas`);
+      const img = canvas ? canvas.toDataURL("image/png") : "";
+      const w = window.open("", "_blank");
+      if (!w) return erreur({ message: "Autorisez les fenêtres pop-up pour imprimer la fiche." });
+      w.document.write(`<!DOCTYPE html><html lang="fr"><head><meta charset="utf-8"><title>QR ${esc(b.dataset.plaque)}</title>
+        <style>body{font-family:Arial,sans-serif;text-align:center;padding:30px;color:#10233F}
+        .f{border:6px solid #10233F;border-radius:16px;padding:24px;display:inline-block;max-width:340px}
+        h1{margin:0 0 4px;font-size:28px}.b{background:#F2B705;padding:6px;border-radius:8px;font-weight:bold;margin:12px 0}
+        img{width:260px;height:260px}</style></head><body><div class="f">
+        <h1>MOPILA CHECK</h1><div>Le juste prix du transport à Kinshasa</div>
+        <div class="b">Scannez pour vérifier ce véhicule</div><img src="${img}" alt="QR code">
+        <h2>${esc(b.dataset.plaque)}</h2><div>${esc(b.dataset.mode)}</div></div>
+        <script>window.onload=function(){window.print()}<\/script></body></html>`);
+      w.document.close();
+    }));
+  }
+
+  function dessinerQR(z) {
+    const el = z.querySelector(".qr-box");
+    if (!el || el.dataset.fait) return;
+    el.dataset.fait = "1";
+    if (window.QRCode) new QRCode(el, { text: el.dataset.qr, width: 200, height: 200 });
+    else el.textContent = el.dataset.qr;
   }
 
   async function adminRecidivistes(zone) {
@@ -807,15 +921,46 @@
     bar.hidden = !etat.session;
     const verif = bar.querySelector('[data-tab="verifier"]');
     if (verif && bar.firstElementChild !== verif) bar.prepend(verif);
-    let adm = bar.querySelector('[data-tab="admin"]');
-    if (aRole("agent", "admin")) {
-      if (!adm) {
-        adm = document.createElement("a");
-        adm.href = "#/admin"; adm.dataset.tab = "admin";
-        adm.innerHTML = "<span>🛡️</span>Admin";
-        bar.appendChild(adm);
-      }
-    } else if (adm) adm.remove();
+    // Onglet propre au rôle affiché
+    const special = [
+      ["chauffeur", "#/chauffeur", "🚖", "Chauffeur", aRole("chauffeur")],
+      ["proprietaire", "#/proprietaire", "🚌", "Véhicules", aRole("proprietaire")],
+      ["admin", "#/admin", "🛡️", "Admin", aRole("agent", "admin")]
+    ];
+    special.forEach(([tab, href, ico, lib, montrer]) => {
+      let a = bar.querySelector(`[data-tab="${tab}"]`);
+      if (montrer && !a) {
+        a = document.createElement("a");
+        a.href = href; a.dataset.tab = tab;
+        a.innerHTML = `<span>${ico}</span>${lib}`;
+        bar.appendChild(a);
+      } else if (!montrer && a) a.remove();
+    });
+    majSelecteurTest();
+  }
+
+  // Sélecteur « Mode test » dans la barre du haut, visible seulement pour l’administrateur
+  function majSelecteurTest() {
+    const top = document.querySelector(".topbar");
+    let sel = document.getElementById("mode-test");
+    if (!estVraiAdmin()) { if (sel) sel.remove(); return; }
+    if (!sel) {
+      sel = document.createElement("select");
+      sel.id = "mode-test";
+      sel.title = "Mode test : voir l’application comme…";
+      sel.style.cssText = "width:auto;padding:6px 8px;font-size:13px;font-weight:700;border-radius:8px;border:2px solid #F2B705;background:#10233F;color:#F6F3EA";
+      sel.innerHTML = [["admin", "👑 Administrateur"], ["agent", "🛡️ Agent"], ["proprietaire", "🚌 Propriétaire"], ["chauffeur", "🚖 Chauffeur"], ["client", "🧍 Client"]]
+        .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
+      sel.addEventListener("change", () => {
+        try { localStorage.setItem(PERSONA_KEY, sel.value); } catch (_) { /* stockage indisponible */ }
+        journaliser("mode test", ROLES[sel.value]);
+        toast("Vous voyez maintenant l’application comme : " + ROLES[sel.value]);
+        const cible = { chauffeur: "#/chauffeur", proprietaire: "#/proprietaire", admin: "#/admin", agent: "#/admin", client: "#/verifier" }[sel.value];
+        if (location.hash === cible) route(); else location.hash = cible;
+      });
+      top.appendChild(sel);
+    }
+    sel.value = roleVue();
   }
 
   /* ---------- Routeur ---------- */
@@ -833,7 +978,7 @@
     }
     // Personne connectée : la première page est la vérification du QR code.
     const nom = VUES[demande] ? demande : "verifier";
-    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === nom || (nom === "chauffeur" || nom === "proprietaire") && a.dataset.tab === "compte"));
+    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === nom));
     try { await VUES[nom](); } catch (e) { erreur(e); }
     if (etat.session) journaliser("écran", NOMS_ECRANS[nom]);
     window.scrollTo(0, 0);
