@@ -68,6 +68,86 @@
   }
   function aRole(...roles) { return !!etat.profil && roles.includes(roleVue()); }
 
+  /* ---------- Langue : français / lingala ---------- */
+  // Les traductions en lingala sont à relire par un locuteur natif : modifiez-les ici librement.
+  const LANG_KEY = "mopila_langue";
+  const TXT = {
+    fr: {
+      tab_prix: "Prix", tab_signaler: "Signaler", tab_scanner: "Scanner", tab_compte: "Compte",
+      tab_chauffeur: "Chauffeur", tab_vehicules: "Véhicules", tab_admin: "Admin",
+      prix_eyebrow: "Grille tarifaire officielle", prix_titre: "Quel est le bon prix ?",
+      prix_intro: "Tapez votre départ et votre arrivée : le tarif officiel s’affiche, même sans connexion.",
+      depart: "Départ", arrivee: "Arrivée", type_vehicule: "Type de véhicule", tapez_lieu: "Tapez un lieu…",
+      inverser: "⇅ Inverser", recents: "Trajets récents", favoris: "⭐ Mes favoris",
+      prix_officiel: "Prix officiel", plus_cher: "On vous demande plus ? Signaler", ajouter_favori: "☆ Ajouter aux favoris",
+      retirer_favori: "⭐ Retirer des favoris", partager: "Partager sur WhatsApp", pas_de_tarif: "Trajet pas encore dans la grille",
+      pas_de_tarif_txt: "Ce trajet n’a pas encore de prix officiel. Essayez un autre type de véhicule ou un trajet proche.",
+      classement: "🏆 Chauffeurs exemplaires du mois", classement_vide: "Pas encore de chauffeur classé ce mois-ci.",
+      courses: "course(s)", partager_classement: "Partager le classement",
+      verif_eyebrow: "Contrôle du véhicule", verif_titre: "Ce véhicule est-il en règle ?",
+      verif_intro: "Scannez le QR code collé dans le véhicule, ou saisissez son code.",
+      scanner_qr: "📷 Scanner le QR code", code_vehicule: "Code du véhicule", ok_titre: "Véhicule en règle",
+      ko_titre: "Attention !", inconnu_titre: "Code inconnu", inconnu_txt: "Ce QR code n’est pas enregistré dans MOPILA CHECK. Soyez prudent.",
+      agree: "Véhicule agréé", non_agree: "Véhicule non agréé", conforme: "Chauffeur conforme", non_conforme: "Chauffeur non conforme",
+      deja_signale: "abus confirmé(s) sur ce véhicule", signaler_vehicule: "Signaler ce véhicule", fermer: "Fermer",
+      voir_prix: "Voir les prix officiels",
+      sig_titre: "On vous a demandé plus que le tarif officiel ?",
+      connexion: "Se connecter", inscription: "Créer un compte",
+      merci_confirme: "Merci ! Votre signalement sur {p} a été confirmé par un agent.",
+      sig_rejete: "Votre signalement sur {p} a été examiné et n’a pas été retenu.",
+      intro1_t: "Le juste prix", intro1_p: "Connaissez le prix officiel de votre trajet avant de monter, selon la grille de l’État.",
+      intro2_t: "Scannez le véhicule", intro2_p: "Le QR code dans le véhicule vous dit s’il est agréé et si le chauffeur est en règle.",
+      intro3_t: "Signalez les abus", intro3_p: "On vous demande plus ? Signalez-le en un clic : les agents de contrôle s’en occupent.",
+      suivant: "Suivant", commencer: "Commencer", passer: "Passer", langue: "Langue"
+    },
+    ln: {
+      tab_prix: "Ntalo", tab_signaler: "Kofunda", tab_scanner: "Scanner", tab_compte: "Ngai",
+      tab_chauffeur: "Shofɛ́lɛ", tab_vehicules: "Mituka", tab_admin: "Admin",
+      prix_eyebrow: "Ntalo ya Leta", prix_titre: "Ntalo ya solo ezali boni ?",
+      prix_intro: "Koma esika okolongwa mpe esika okokende : ntalo ya Leta ekobima, ata soki internet ezali te.",
+      depart: "Esika ya kolongwa", arrivee: "Esika ya kokende", type_vehicule: "Lolenge ya motuka", tapez_lieu: "Koma kombo ya esika…",
+      inverser: "⇅ Kobongola", recents: "Mibembo ya sika", favoris: "⭐ Mibembo nalingi",
+      prix_officiel: "Ntalo ya Leta", plus_cher: "Basengi yo mbongo mingi ? Funda", ajouter_favori: "☆ Kobakisa na oyo nalingi",
+      retirer_favori: "⭐ Kolongola", partager: "Kokabola na WhatsApp", pas_de_tarif: "Mobembo oyo ezali naino te",
+      pas_de_tarif_txt: "Mobembo oyo ezali naino na ntalo ya Leta te. Meka lolenge mosusu ya motuka.",
+      classement: "🏆 Bashofɛ́lɛ ya malamu ya sanza oyo", classement_vide: "Shofɛ́lɛ moko te naino na sanza oyo.",
+      courses: "mobembo", partager_classement: "Kokabola",
+      verif_eyebrow: "Kotala motuka", verif_titre: "Motuka oyo ezali na mibeko ?",
+      verif_intro: "Scanner QR code oyo ezali na kati ya motuka, to koma code na yango.",
+      scanner_qr: "📷 Scanner QR code", code_vehicule: "Code ya motuka", ok_titre: "Motuka ezali malamu",
+      ko_titre: "Keba !", inconnu_titre: "Code eyebani te", inconnu_txt: "QR code oyo ekomami na MOPILA CHECK te. Keba.",
+      agree: "Motuka endimami", non_agree: "Motuka endimami te", conforme: "Shofɛ́lɛ azali na mibeko", non_conforme: "Shofɛ́lɛ azali na mibeko te",
+      deja_signale: "mbeba endimami na motuka oyo", signaler_vehicule: "Funda motuka oyo", fermer: "Kokanga",
+      voir_prix: "Tala ntalo ya Leta",
+      sig_titre: "Basengi yo mbongo koleka ntalo ya Leta ?",
+      connexion: "Kokɔta", inscription: "Kosala compte",
+      merci_confirme: "Matɔndi ! Bafundi na yo na {p} endimami na agent.",
+      sig_rejete: "Bafundi na yo na {p} etalelami kasi endimami te.",
+      intro1_t: "Ntalo ya solo", intro1_p: "Yeba ntalo ya Leta ya mobembo na yo liboso ya komata.",
+      intro2_t: "Scanner motuka", intro2_p: "QR code ya motuka elakisi soki motuka endimami mpe soki shofɛ́lɛ azali na mibeko.",
+      intro3_t: "Funda mabe", intro3_p: "Basengi yo mbongo mingi ? Funda yango : ba agents bakosala likambo.",
+      suivant: "Oyo elandi", commencer: "Kobanda", passer: "Kotika", langue: "Monoko"
+    }
+  };
+  let langue = "fr";
+  try { langue = localStorage.getItem(LANG_KEY) === "ln" ? "ln" : "fr"; } catch (_) { /* stockage indisponible */ }
+  function t(k, vars) {
+    let s = TXT[langue][k] ?? TXT.fr[k] ?? k;
+    if (vars) Object.entries(vars).forEach(([a, b]) => (s = s.replace("{" + a + "}", b)));
+    return s;
+  }
+  function changerLangue(l) {
+    langue = l === "ln" ? "ln" : "fr";
+    try { localStorage.setItem(LANG_KEY, langue); } catch (_) { /* stockage indisponible */ }
+    document.documentElement.lang = langue === "ln" ? "ln" : "fr";
+    majTabbar(); route();
+  }
+
+  /* ---------- Stockage local (favoris, récents) ---------- */
+  function lireLocal(k, def) { try { return JSON.parse(localStorage.getItem(k)) ?? def; } catch (_) { return def; } }
+  function ecrireLocal(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (_) { /* stockage indisponible */ } }
+  const sansAccent = (s) => String(s || "").normalize("NFD").replace(/[̀-ͯ]/g, "").toLowerCase();
+
   /* ---------- Grille (avec cache hors ligne) ---------- */
   async function chargerGrille() {
     try {
@@ -99,44 +179,132 @@
     }
   }
 
+  /* ---------- Champ de recherche de lieu ---------- */
+  function champLieu(id, label, selId) {
+    const l = etat.lieux.find((x) => x.id === Number(selId));
+    return `<label for="${id}">${label}</label>
+      <div class="ac"><input id="${id}" autocomplete="off" placeholder="${t("tapez_lieu")}" value="${esc(l?.nom || "")}" data-id="${l ? l.id : ""}">
+      <div class="ac-liste" id="${id}-l" hidden></div></div>`;
+  }
+  function activerChamp(id, onChange) {
+    const inp = $("#" + id), liste = $("#" + id + "-l");
+    const montrer = () => {
+      const q = sansAccent(inp.value.trim());
+      const res = etat.lieux.filter((l) => !q || sansAccent(l.nom + " " + (l.commune || "")).includes(q)).slice(0, 8);
+      liste.innerHTML = res.map((l) => `<button type="button" data-id="${l.id}">${esc(l.nom)}<small>${esc(l.commune || "")}</small></button>`).join("")
+        || `<div class="ac-vide">—</div>`;
+      liste.hidden = false;
+    };
+    inp.addEventListener("focus", montrer);
+    inp.addEventListener("input", () => {
+      const exact = etat.lieux.find((l) => sansAccent(l.nom) === sansAccent(inp.value.trim()));
+      inp.dataset.id = exact ? exact.id : "";
+      montrer(); onChange();
+    });
+    inp.addEventListener("blur", () => setTimeout(() => (liste.hidden = true), 200));
+    liste.addEventListener("mousedown", (e) => e.preventDefault());
+    liste.addEventListener("click", (e) => {
+      const b = e.target.closest("button[data-id]");
+      if (!b) return;
+      const l = etat.lieux.find((x) => x.id === Number(b.dataset.id));
+      inp.value = l.nom; inp.dataset.id = l.id; liste.hidden = true; inp.blur(); onChange();
+    });
+  }
+
   /* ---------- Vue : Prix ---------- */
+  const FAV_KEY = "mopila_favoris", REC_KEY = "mopila_recents";
+  const cleTrajet = (x) => `${x.dep}-${x.arr}-${x.mode}`;
+  const libTrajet = (x) => `${lieuNom(x.dep)} → ${lieuNom(x.arr)} · ${MODES[x.mode]}`;
+
   function vuePrix() {
     const p = params();
+    let mode = MODES[p.mode] ? p.mode : "taxi_bus";
+    const puces = (liste) => liste.filter((x) => prixLocal(x.dep, x.arr, x.mode))
+      .map((x) => `<button type="button" class="puce" data-t='${esc(JSON.stringify(x))}'>${esc(libTrajet(x))}</button>`).join("");
+    const fav = lireLocal(FAV_KEY, []), rec = lireLocal(REC_KEY, []);
     app.innerHTML = `
-      <p class="eyebrow">Grille tarifaire officielle</p>
-      <h1>Quel est le bon prix ?</h1>
-      <p class="muted">Choisissez votre trajet : le tarif fixé par l’arrêté provincial s’affiche, même sans connexion.</p>
+      <p class="eyebrow">${t("prix_eyebrow")}</p>
+      <h1>${t("prix_titre")}</h1>
+      <p class="muted">${t("prix_intro")}</p>
+      ${fav.length ? `<p class="mini-titre">${t("favoris")}</p><div class="puces">${puces(fav)}</div>` : ""}
+      ${rec.length ? `<p class="mini-titre">${t("recents")}</p><div class="puces">${puces(rec)}</div>` : ""}
       <div class="card">
-        <label for="mode">Type de véhicule</label>
-        <select id="mode">${optionsModes(p.mode || "taxi_bus")}</select>
-        <label for="dep">Départ</label>
-        <select id="dep">${optionsLieux(p.dep)}</select>
-        <label for="arr">Arrivée</label>
-        <select id="arr">${optionsLieux(p.arr)}</select>
-        <button class="btn ligne" id="inverser" type="button">⇅ Inverser le trajet</button>
+        <label>${t("type_vehicule")}</label>
+        <div class="choix-mode">${Object.entries(MODES).map(([k, v]) => `<button type="button" data-mode="${k}" class="${k === mode ? "actif" : ""}">${{ taxi_bus: "🚌", taxi: "🚕", taxi_moto: "🏍️" }[k]} ${v}</button>`).join("")}</div>
+        ${champLieu("dep", t("depart"), p.dep)}
+        ${champLieu("arr", t("arrivee"), p.arr)}
+        <button class="btn ligne" id="inverser" type="button">${t("inverser")}</button>
       </div>
       <div id="resultat"></div>
-      <p class="footer-note">${etat.tarifs.length} tarif(s) officiel(s) enregistré(s) · ${etat.lieux.length} lieu(x)</p>`;
+      <div class="card" id="classement"><h3>${t("classement")}</h3><p class="muted">…</p></div>
+      <p class="footer-note">${etat.tarifs.length} · ${etat.lieux.length}</p>`;
 
     const maj = () => {
-      const dep = $("#dep").value, arr = $("#arr").value, mode = $("#mode").value;
+      const dep = $("#dep").dataset.id, arr = $("#arr").dataset.id;
       const r = $("#resultat");
       if (!dep || !arr) { r.innerHTML = ""; return; }
-      if (dep === arr) { r.innerHTML = `<div class="card">Le départ et l’arrivée sont identiques.</div>`; return; }
-      const t = prixLocal(dep, arr, mode);
-      r.innerHTML = t
-        ? `<div class="card dark">
-             <p class="muted">${esc(lieuNom(dep))} → ${esc(lieuNom(arr))} · ${MODES[mode]}</p>
-             <div class="prix-grand">${fc(t.prix_fc)}</div>
-             <p class="muted">Selon : ${esc(t.arrete)} (en vigueur depuis le ${jourFr(t.date_effet)})</p>
-             <a class="btn jaune" href="#/signaler?dep=${dep}&arr=${arr}&mode=${mode}">On me demande plus ? Signaler</a>
-           </div>`
-        : `<div class="card accent"><h3>Trajet pas encore dans la grille</h3>
-             <p class="muted">Ce trajet n’a pas encore de tarif officiel dans MOPILA CHECK. Essayez un trajet proche ou un autre type de véhicule.</p></div>`;
+      const tr = prixLocal(dep, arr, mode);
+      if (!tr) { r.innerHTML = `<div class="card accent"><h3>${t("pas_de_tarif")}</h3><p class="muted">${t("pas_de_tarif_txt")}</p></div>`; return; }
+      const x = { dep: Number(dep), arr: Number(arr), mode };
+      ecrireLocal(REC_KEY, [x, ...lireLocal(REC_KEY, []).filter((y) => cleTrajet(y) !== cleTrajet(x))].slice(0, 5));
+      const estFav = lireLocal(FAV_KEY, []).some((y) => cleTrajet(y) === cleTrajet(x));
+      const lien = location.origin + location.pathname;
+      const msg = `🚖 ${t("prix_officiel")} ${lieuNom(dep)} → ${lieuNom(arr)} (${MODES[mode]}) : ${fc(tr.prix_fc)}. MOPILA CHECK : ${lien}`;
+      r.innerHTML = `
+        <div class="card dark apparition">
+          <p class="muted">${esc(lieuNom(dep))} → ${esc(lieuNom(arr))} · ${MODES[mode]}</p>
+          <div class="prix-grand">${fc(tr.prix_fc)}</div>
+          <p class="muted">${esc(tr.arrete)} · ${jourFr(tr.date_effet)}</p>
+          <div class="row">
+            <button class="btn petit ligne-claire" id="fav" type="button">${estFav ? t("retirer_favori") : t("ajouter_favori")}</button>
+            <a class="btn petit whatsapp" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${t("partager")}</a>
+          </div>
+          <a class="btn jaune" href="#/signaler?dep=${dep}&arr=${arr}&mode=${mode}">${t("plus_cher")}</a>
+        </div>`;
+      $("#fav").addEventListener("click", () => {
+        const liste = lireLocal(FAV_KEY, []);
+        const deja = liste.some((y) => cleTrajet(y) === cleTrajet(x));
+        ecrireLocal(FAV_KEY, deja ? liste.filter((y) => cleTrajet(y) !== cleTrajet(x)) : [x, ...liste].slice(0, 10));
+        $("#fav").textContent = deja ? t("ajouter_favori") : t("retirer_favori");
+      });
     };
-    ["#dep", "#arr", "#mode"].forEach((s) => $(s).addEventListener("change", maj));
-    $("#inverser").addEventListener("click", () => { const d = $("#dep").value; $("#dep").value = $("#arr").value; $("#arr").value = d; maj(); });
+    activerChamp("dep", maj);
+    activerChamp("arr", maj);
+    app.querySelectorAll(".choix-mode button").forEach((b) => b.addEventListener("click", () => {
+      mode = b.dataset.mode;
+      app.querySelectorAll(".choix-mode button").forEach((x) => x.classList.toggle("actif", x === b));
+      maj();
+    }));
+    app.querySelectorAll(".puce").forEach((b) => b.addEventListener("click", () => {
+      const x = JSON.parse(b.dataset.t);
+      mode = x.mode;
+      app.querySelectorAll(".choix-mode button").forEach((y) => y.classList.toggle("actif", y.dataset.mode === mode));
+      $("#dep").value = lieuNom(x.dep); $("#dep").dataset.id = x.dep;
+      $("#arr").value = lieuNom(x.arr); $("#arr").dataset.id = x.arr;
+      maj();
+      $("#resultat").scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
+    $("#inverser").addEventListener("click", () => {
+      const d = $("#dep"), a = $("#arr");
+      [d.value, a.value] = [a.value, d.value];
+      [d.dataset.id, a.dataset.id] = [a.dataset.id, d.dataset.id];
+      maj();
+    });
     maj();
+    chargerClassement();
+  }
+
+  async function chargerClassement() {
+    const z = $("#classement");
+    if (!z) return;
+    const { data, error } = await sb.rpc("classement_chauffeurs", { p_limite: 5 });
+    if (!$("#classement")) return;
+    if (error || !data?.length) { z.innerHTML = `<h3>${t("classement")}</h3><p class="muted">${t("classement_vide")}</p>`; return; }
+    const medailles = ["🥇", "🥈", "🥉", "4.", "5."];
+    const texte = `${t("classement")}\n` + data.map((c, i) => `${medailles[i]} ${c.nom} (${c.courses} ${t("courses")})`).join("\n") + `\nMOPILA CHECK : ${location.origin + location.pathname}`;
+    z.innerHTML = `<h3>${t("classement")}</h3>
+      <ul class="liste">${data.map((c, i) => `<li><div class="ligne-haut"><span>${medailles[i]} <b>${esc(c.nom)}</b></span><span class="badge ok">${c.courses} ${t("courses")}</span></div></li>`).join("")}</ul>
+      <a class="btn petit whatsapp" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${t("partager_classement")}</a>`;
   }
 
   /* ---------- Vue : Vérifier un véhicule ---------- */
@@ -144,45 +312,63 @@
     try { const u = new URL(texte); return u.searchParams.get("v") || texte.trim(); } catch (_) { return texte.trim(); }
   }
 
+  function fermerVerdict() { document.getElementById("verdict")?.remove(); }
+
+  function afficherVerdict(v) {
+    fermerVerdict();
+    const ok = v && v.agree && v.chauffeur_conforme && v.signalements_confirmes < 2;
+    try { navigator.vibrate?.(ok ? 80 : [200, 100, 200]); } catch (_) { /* vibration indisponible */ }
+    const d = document.createElement("div");
+    d.id = "verdict";
+    d.className = "verdict " + (ok ? "ok" : "ko");
+    d.setAttribute("role", "dialog");
+    d.innerHTML = v ? `
+      <div class="verdict-icone">${ok ? "✅" : "⚠️"}</div>
+      <h1>${ok ? t("ok_titre") : t("ko_titre")}</h1>
+      <div class="verdict-plaque">${esc(v.plaque)}</div>
+      <p>${MODES[v.mode]}${v.chauffeur_nom ? " · " + esc(v.chauffeur_nom) : ""}</p>
+      <ul class="verdict-liste">
+        <li>${v.agree ? "✔" : "✖"} ${v.agree ? t("agree") : t("non_agree")}</li>
+        <li>${v.chauffeur_conforme ? "✔" : "✖"} ${v.chauffeur_conforme ? t("conforme") : t("non_conforme")}</li>
+        ${v.signalements_confirmes ? `<li>✖ ${v.signalements_confirmes} ${t("deja_signale")}</li>` : ""}
+      </ul>
+      <a class="btn jaune" id="v-prix" href="#/prix?mode=${v.mode}">${t("voir_prix")}</a>
+      <a class="btn ligne-claire" id="v-sig" href="#/signaler?plaque=${encodeURIComponent(v.plaque)}&mode=${v.mode}">${t("signaler_vehicule")}</a>
+      <button class="btn ligne-claire" id="v-fermer" type="button">${t("fermer")}</button>`
+      : `<div class="verdict-icone">❓</div><h1>${t("inconnu_titre")}</h1><p>${t("inconnu_txt")}</p>
+      <button class="btn jaune" id="v-fermer" type="button">${t("fermer")}</button>`;
+    document.body.appendChild(d);
+    d.querySelector("#v-fermer").addEventListener("click", fermerVerdict);
+    d.querySelectorAll("a").forEach((a) => a.addEventListener("click", fermerVerdict));
+  }
+
   async function vueVerifier() {
     const p = params();
     app.innerHTML = `
-      <p class="eyebrow">Contrôle du véhicule</p>
-      <h1>Ce véhicule est-il en règle ?</h1>
-      <p class="muted">Scannez le QR code collé dans le véhicule, ou saisissez son code.</p>
+      <p class="eyebrow">${t("verif_eyebrow")}</p>
+      <h1>${t("verif_titre")}</h1>
+      <p class="muted">${t("verif_intro")}</p>
       <div class="card">
         <div id="lecteur"></div>
-        <button class="btn jaune" id="scanner" type="button">📷 Scanner le QR code</button>
-        <label for="code">Code du véhicule</label>
-        <div class="row"><input id="code" placeholder="Code du QR" value="${esc(p.v || "")}"><button class="btn petit" id="chercher" type="button">OK</button></div>
+        <button class="btn jaune gros" id="scanner" type="button">${t("scanner_qr")}</button>
+        <label for="code">${t("code_vehicule")}</label>
+        <div class="row"><input id="code" placeholder="Code" value="${esc(p.v || "")}"><button class="btn petit" id="chercher" type="button">OK</button></div>
       </div>
-      <div id="resultat"></div>`;
+      <a class="btn ligne" href="#/prix">${t("voir_prix")}</a>`;
 
     const verifier = async (code) => {
       code = extraireCode(code || "");
       if (!code) return;
       $("#code").value = code;
-      const r = $("#resultat");
-      r.innerHTML = `<div class="card">Vérification…</div>`;
       const { data, error } = await sb.rpc("verifier_vehicule", { p_qr: code });
-      if (error) { r.innerHTML = ""; return erreur(error); }
-      const v = data?.[0];
-      if (!v) { r.innerHTML = `<div class="card accent"><h3>Code inconnu</h3><p class="muted">Ce QR code n’est pas enregistré dans MOPILA CHECK. Soyez prudent.</p></div>`; return; }
-      const ok = v.agree && v.chauffeur_conforme;
-      r.innerHTML = `
-        <div class="card ${ok ? "dark" : "accent"}">
-          <p class="muted">${MODES[v.mode]}</p>
-          <h2>${esc(v.plaque)}</h2>
-          <p>Véhicule : <span class="badge ${v.agree ? "ok" : "ko"}">${v.agree ? "Agréé" : "Non agréé"}</span></p>
-          <p>Chauffeur : ${esc(v.chauffeur_nom || "non déclaré")} <span class="badge ${v.chauffeur_conforme ? "ok" : "ko"}">${v.chauffeur_conforme ? "Chauffeur conforme" : "Non conforme"}</span></p>
-          <p>Signalements confirmés : <b>${v.signalements_confirmes}</b></p>
-          <a class="btn ${ok ? "jaune" : ""}" href="#/signaler?plaque=${encodeURIComponent(v.plaque)}&mode=${v.mode}">Signaler un abus sur ce véhicule</a>
-        </div>`;
+      if (error) return erreur(error);
+      afficherVerdict(data?.[0] || null);
+      journaliser("scan", data?.[0]?.plaque || "code inconnu");
     };
 
     $("#chercher").addEventListener("click", () => verifier($("#code").value));
     $("#code").addEventListener("keydown", (e) => { if (e.key === "Enter") verifier($("#code").value); });
-    $("#scanner").addEventListener("click", async () => {
+    const lancer = async () => {
       if (!window.Html5Qrcode) return toast("Le scanner n’a pas pu se charger. Saisissez le code.", true);
       try {
         await arreterScanner();
@@ -192,8 +378,10 @@
           verifier(texte);
         });
       } catch (e) { erreur({ message: "Impossible d’ouvrir la caméra : " + (e?.message || e) }); }
-    });
+    };
+    $("#scanner").addEventListener("click", lancer);
     if (p.v) verifier(p.v);
+    else if (p.scan) lancer();
   }
 
   async function arreterScanner() {
@@ -216,7 +404,7 @@
     const p = params();
     app.innerHTML = `
       <p class="eyebrow">Signalement</p>
-      <h1>On vous a demandé plus que le tarif officiel ?</h1>
+      <h1>${t("sig_titre")}</h1>
       <form class="card" id="form">
         <label for="mode">Type de véhicule</label>
         <select id="mode" required>${optionsModes(p.mode || "taxi_bus")}</select>
@@ -327,7 +515,7 @@
     const inscription = p.mode === "inscription";
     app.innerHTML = `
       <p class="eyebrow">Mon compte</p>
-      <h1>${inscription ? "Créer un compte" : "Se connecter"}</h1>
+      <h1>${inscription ? t("inscription") : t("connexion")}</h1>
       <form class="card" id="form">
         ${inscription ? `
           <label for="nom">Nom complet</label><input id="nom" required>
@@ -363,6 +551,7 @@
         }
         await chargerProfil();
         journaliser(inscription ? "inscription" : "connexion");
+        verifierNouvelles();
         const cible = p.retour ? decodeURIComponent(p.retour) : "#/verifier";
         if (location.hash === cible) route(); else location.hash = cible;
       } catch (err) { erreur(err); } finally { b.disabled = false; }
@@ -778,7 +967,13 @@
       ${grille2(tuile(s.trajets, "trajets avec prix officiel", true) + tuile(s.lieux, "lieux enregistrés") + tuile(`${s.vehicules_agrees}/${s.vehicules}`, "véhicules agréés") + tuile(`${s.chauffeurs_conformes}/${s.chauffeurs}`, "chauffeurs conformes"))}
       <h2>Contrôle</h2>
       ${grille2(tuile(s.signalements_a_traiter, "signalements à traiter", true) + tuile(s.signalements_confirmes, "abus confirmés") + tuile(s.documents_en_attente, "documents à vérifier") + tuile(s.courses_7j, "courses ces 7 jours"))}
+      <div class="card"><h3>📊 Exporter vers Excel</h3>
+        <p class="muted">Fichiers CSV qui s’ouvrent directement dans Excel.</p>
+        <div class="row"><button class="btn petit export" data-t="signalements">Signalements</button><button class="btn petit export" data-t="utilisateurs">Utilisateurs</button></div>
+        <div class="row" style="margin-top:8px"><button class="btn petit ligne export" data-t="trajets">Trajets et prix</button><button class="btn petit ligne export" data-t="vehicules">Véhicules</button></div>
+      </div>
       <p class="muted">Chiffres mis à jour à l’ouverture de cet onglet.</p>`;
+    zone.querySelectorAll(".export").forEach((b) => b.addEventListener("click", () => exporter(b.dataset.t)));
   }
 
   async function adminGrille(zone) {
@@ -827,7 +1022,17 @@
           <button class="btn ligne">Enregistrer l’arrêté</button>
           <p class="muted" style="margin-top:8px">Les trajets d’un nouvel arrêté remplacent les anciens à sa date d’entrée en vigueur.</p>
         </form>
-      </details>`;
+      </details>
+      <div class="card"><h3>🧪 Données de démonstration</h3>
+        <p class="muted">Les lieux marqués « (démo) », leurs prix fictifs et les véhicules DEMO-001 à 003 servent aux présentations. Supprimez-les avant la mise en service réelle.</p>
+        <button class="btn ligne" id="suppr-demo" type="button">Supprimer les données de démonstration</button>
+      </div>`;
+    $("#suppr-demo").addEventListener("click", async () => {
+      if (!confirm("Supprimer toutes les données de démonstration ?")) return;
+      const { data, error } = await sb.rpc("supprimer_donnees_demo");
+      if (error) return erreur(error);
+      toast(data); adminGrille(zone);
+    });
 
     $("#ftrajet").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -919,24 +1124,133 @@
   function majTabbar() {
     const bar = document.querySelector(".tabbar");
     bar.hidden = !etat.session;
-    const verif = bar.querySelector('[data-tab="verifier"]');
-    if (verif && bar.firstElementChild !== verif) bar.prepend(verif);
-    // Onglet propre au rôle affiché
-    const special = [
-      ["chauffeur", "#/chauffeur", "🚖", "Chauffeur", aRole("chauffeur")],
-      ["proprietaire", "#/proprietaire", "🚌", "Véhicules", aRole("proprietaire")],
-      ["admin", "#/admin", "🛡️", "Admin", aRole("agent", "admin")]
+    const role = aRole("chauffeur") ? ["chauffeur", "#/chauffeur", "🚖", t("tab_chauffeur")]
+      : aRole("proprietaire") ? ["proprietaire", "#/proprietaire", "🚌", t("tab_vehicules")]
+      : aRole("agent", "admin") ? ["admin", "#/admin", "🛡️", t("tab_admin")] : null;
+    const items = [
+      ["prix", "#/prix", "💰", t("tab_prix")],
+      ["signaler", "#/signaler", "⚠️", t("tab_signaler")],
+      ["verifier", "#/verifier?scan=1", "📷", t("tab_scanner"), true],
+      ["compte", "#/compte", "👤", t("tab_compte")]
     ];
-    special.forEach(([tab, href, ico, lib, montrer]) => {
-      let a = bar.querySelector(`[data-tab="${tab}"]`);
-      if (montrer && !a) {
-        a = document.createElement("a");
-        a.href = href; a.dataset.tab = tab;
-        a.innerHTML = `<span>${ico}</span>${lib}`;
-        bar.appendChild(a);
-      } else if (!montrer && a) a.remove();
+    if (role) items.push(role);
+    const actif = location.hash.replace(/^#\//, "").split("?")[0] || "verifier";
+    bar.innerHTML = items.map(([tab, href, ico, lib, centre]) =>
+      `<a href="${href}" data-tab="${tab}" class="${centre ? "tab-scan" : ""} ${tab === actif ? "actif" : ""}"><span class="${centre ? "rond" : ""}">${ico}</span>${lib}</a>`).join("");
+    bar.querySelector(".tab-scan")?.addEventListener("click", (e) => {
+      if (location.hash === "#/verifier?scan=1") { e.preventDefault(); route(); }
     });
     majSelecteurTest();
+    majBoutonLangue();
+  }
+
+  function majBoutonLangue() {
+    const top = document.querySelector(".topbar");
+    let b = document.getElementById("btn-langue");
+    if (!b) {
+      b = document.createElement("button");
+      b.id = "btn-langue"; b.type = "button";
+      b.style.cssText = "white-space:nowrap;margin-left:auto;margin-right:8px;font:inherit;font-size:13px;font-weight:700;padding:6px 10px;border-radius:8px;border:2px solid #F2B705;background:transparent;color:#F6F3EA;cursor:pointer";
+      b.addEventListener("click", () => changerLangue(langue === "fr" ? "ln" : "fr"));
+      top.insertBefore(b, document.getElementById("net"));
+    }
+    b.textContent = langue === "fr" ? "🌐 LN" : "🌐 FR";
+    b.title = t("langue");
+  }
+
+  /* ---------- Accueil : visite guidée en 3 écrans ---------- */
+  const INTRO_KEY = "mopila_intro_vue";
+  function montrerIntro() {
+    return new Promise((fin) => {
+      if (lireLocal(INTRO_KEY, false)) return fin();
+      let i = 0;
+      const ecrans = [["🚖", "intro1_t", "intro1_p"], ["📷", "intro2_t", "intro2_p"], ["⚠️", "intro3_t", "intro3_p"]];
+      const d = document.createElement("div");
+      d.className = "intro";
+      document.body.appendChild(d);
+      const dessiner = () => {
+        const [ico, ti, tp] = ecrans[i];
+        d.innerHTML = `
+          <div class="intro-langue">
+            <button type="button" data-l="fr" class="${langue === "fr" ? "actif" : ""}">Français</button>
+            <button type="button" data-l="ln" class="${langue === "ln" ? "actif" : ""}">Lingala</button>
+          </div>
+          <div class="intro-corps apparition">
+            <div class="intro-icone">${ico}</div>
+            <h1>${t(ti)}</h1>
+            <p>${t(tp)}</p>
+          </div>
+          <div class="intro-points">${ecrans.map((_, k) => `<span class="${k === i ? "actif" : ""}"></span>`).join("")}</div>
+          <button type="button" class="btn jaune" id="i-suiv">${i < ecrans.length - 1 ? t("suivant") : t("commencer")}</button>
+          ${i < ecrans.length - 1 ? `<button type="button" class="btn ligne-claire" id="i-passer">${t("passer")}</button>` : ""}`;
+        d.querySelectorAll("[data-l]").forEach((b) => b.addEventListener("click", () => {
+          langue = b.dataset.l;
+          try { localStorage.setItem(LANG_KEY, langue); } catch (_) { /* stockage indisponible */ }
+          dessiner();
+        }));
+        const terminer = () => { ecrireLocal(INTRO_KEY, true); d.remove(); fin(); };
+        d.querySelector("#i-suiv").addEventListener("click", () => (i < ecrans.length - 1 ? (i++, dessiner()) : terminer()));
+        d.querySelector("#i-passer")?.addEventListener("click", terminer);
+      };
+      dessiner();
+    });
+  }
+
+  /* ---------- Retour au client sur ses signalements ---------- */
+  async function verifierNouvelles() {
+    if (!etat.session) return;
+    const uid = etat.session.user.id;
+    const { data } = await sb.from("signalements").select("id, plaque_saisie, statut")
+      .eq("client_id", uid).in("statut", ["confirme", "rejete"]);
+    if (!data) return;
+    const cle = "mopila_vus_" + uid;
+    const vus = lireLocal(cle, null);
+    ecrireLocal(cle, data.map((s) => s.id));
+    if (vus === null) return; // premier passage : rien à annoncer
+    const nouveaux = data.filter((s) => !vus.includes(s.id));
+    if (!nouveaux.length) return;
+    const s = nouveaux[0];
+    const msg = t(s.statut === "confirme" ? "merci_confirme" : "sig_rejete", { p: s.plaque_saisie || "—" });
+    toast(nouveaux.length > 1 ? `${msg} (+${nouveaux.length - 1})` : msg);
+  }
+
+  /* ---------- Export Excel (CSV) ---------- */
+  function telechargerCSV(nom, lignes) {
+    const cellule = (v) => {
+      const s = v == null ? "" : String(v);
+      return /[;"\n]/.test(s) ? `"${s.replace(/"/g, '""')}"` : s;
+    };
+    const csv = "﻿" + lignes.map((l) => l.map(cellule).join(";")).join("\r\n");
+    const url = URL.createObjectURL(new Blob([csv], { type: "text/csv;charset=utf-8" }));
+    const a = document.createElement("a");
+    a.href = url; a.download = `${nom}_${new Date().toISOString().slice(0, 10)}.csv`;
+    document.body.appendChild(a); a.click(); a.remove();
+    setTimeout(() => URL.revokeObjectURL(url), 2000);
+    journaliser("export Excel", nom);
+  }
+
+  async function exporter(type) {
+    if (type === "signalements") {
+      const { data, error } = await sb.from("signalements").select("id, date_heure, plaque_saisie, mode, depart_id, arrivee_id, prix_officiel_fc, prix_demande_fc, statut, commentaire, note_agent").order("date_heure", { ascending: false });
+      if (error) return erreur(error);
+      telechargerCSV("signalements", [["N°", "Date", "Plaque", "Mode", "Départ", "Arrivée", "Prix officiel (FC)", "Prix demandé (FC)", "Écart (FC)", "Statut", "Commentaire", "Note de l’agent"],
+        ...data.map((s) => [s.id, dateFr(s.date_heure), s.plaque_saisie, MODES[s.mode], lieuNom(s.depart_id), lieuNom(s.arrivee_id), s.prix_officiel_fc, s.prix_demande_fc,
+          s.prix_officiel_fc ? s.prix_demande_fc - s.prix_officiel_fc : "", STATUTS_SIG[s.statut], s.commentaire, s.note_agent])]);
+    } else if (type === "utilisateurs") {
+      const { data, error } = await sb.rpc("utilisateurs_admin");
+      if (error) return erreur(error);
+      telechargerCSV("utilisateurs", [["Nom", "E-mail", "Téléphone", "Accès", "Inscrit le", "Dernière connexion", "E-mail confirmé", "Actions (7 jours)"],
+        ...data.map((u) => [u.nom, u.email, u.telephone, ROLES[u.role], dateFr(u.inscrit_le), u.derniere_connexion ? dateFr(u.derniere_connexion) : "", u.email_confirme ? "oui" : "non", u.actions_7j])]);
+    } else if (type === "trajets") {
+      await chargerGrille();
+      telechargerCSV("trajets", [["Départ", "Arrivée", "Mode", "Prix officiel (FC)", "Arrêté", "En vigueur depuis"],
+        ...etat.tarifs.map((x) => [x.depart, x.arrivee, MODES[x.mode], x.prix_fc, x.arrete, jourFr(x.date_effet)])]);
+    } else if (type === "vehicules") {
+      const { data, error } = await sb.from("vehicules").select("plaque, mode, agree, qr_code, created_at, proprietaire:profils!vehicules_proprietaire_id_fkey(nom)").order("plaque");
+      if (error) return erreur(error);
+      telechargerCSV("vehicules", [["Plaque", "Mode", "Agréé", "Propriétaire", "Enregistré le", "Lien du QR code"],
+        ...data.map((v) => [v.plaque, MODES[v.mode], v.agree ? "oui" : "non", v.proprietaire?.nom, dateFr(v.created_at), lienQR(v.qr_code)])]);
+    }
   }
 
   // Sélecteur « Mode test » dans la barre du haut, visible seulement pour l’administrateur
@@ -949,7 +1263,7 @@
       sel.id = "mode-test";
       sel.title = "Mode test : voir l’application comme…";
       sel.style.cssText = "width:auto;padding:6px 8px;font-size:13px;font-weight:700;border-radius:8px;border:2px solid #F2B705;background:#10233F;color:#F6F3EA";
-      sel.innerHTML = [["admin", "👑 Administrateur"], ["agent", "🛡️ Agent"], ["proprietaire", "🚌 Propriétaire"], ["chauffeur", "🚖 Chauffeur"], ["client", "🧍 Client"]]
+      sel.innerHTML = [["admin", "👑 Admin"], ["agent", "🛡️ Agent"], ["proprietaire", "🚌 Propriét."], ["chauffeur", "🚖 Chauffeur"], ["client", "🧍 Client"]]
         .map(([k, v]) => `<option value="${k}">${v}</option>`).join("");
       sel.addEventListener("change", () => {
         try { localStorage.setItem(PERSONA_KEY, sel.value); } catch (_) { /* stockage indisponible */ }
@@ -967,6 +1281,7 @@
   const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueSignaler, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin };
 
   async function route() {
+    fermerVerdict();
     await arreterScanner();
     majTabbar();
     const demande = location.hash.replace(/^#\//, "").split("?")[0];
@@ -993,13 +1308,15 @@
     majReseau();
     window.addEventListener("online", () => { majReseau(); chargerGrille(); });
     window.addEventListener("offline", majReseau);
-    app.innerHTML = `<div class="card">Chargement de la grille tarifaire…</div>`;
-    await Promise.all([chargerGrille(), chargerProfil()]);
+    app.innerHTML = `<div class="splash"><div class="splash-logo">M</div><div class="splash-nom">MOPILA CHECK</div><div class="muted">Le juste prix du transport à Kinshasa</div></div>`;
+    await Promise.all([chargerGrille(), chargerProfil(), new Promise((r) => setTimeout(r, 900))]);
+    await montrerIntro();
     sb.auth.onAuthStateChange(async (evt) => {
       if (evt === "SIGNED_IN" || evt === "SIGNED_OUT") { await chargerProfil(); majTabbar(); if (evt === "SIGNED_OUT") route(); }
     });
     window.addEventListener("hashchange", route);
     route();
+    verifierNouvelles();
     if ("serviceWorker" in navigator) navigator.serviceWorker.register("sw.js").catch(() => {});
   }
 
