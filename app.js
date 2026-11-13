@@ -534,6 +534,8 @@
   /* ---------- Vue : Mes avis ---------- */
   async function vueMesAvis() {
     if (!etat.session) return besoinConnexion(t("tab_avis"));
+    sb.from("signalements").select("id").eq("client_id", etat.session.user.id).in("statut", ["confirme", "rejete"])
+      .then(({ data }) => { if (data) { marquerVu("mesavis", data.map((x) => x.id)); majBadges(); } });
     const { data, error } = await sb.from("evaluations")
       .select("id, note_prix, note_chauffeur, prix_officiel_fc, prix_demande_fc, mode, depart_id, arrivee_id, commentaire, date_heure, signalements(statut)")
       .eq("client_id", etat.session.user.id).order("date_heure", { ascending: false }).limit(50);
@@ -672,7 +674,11 @@
         <h3>Mon code chauffeur</h3>
         <p class="muted">Donnez ce code au propriétaire du véhicule pour qu’il vous affecte.</p>
         <code class="cle" id="moncode">${esc(uid)}</code>
-        <button class="btn ligne" id="copier" type="button">Copier le code</button>
+        <div class="row" style="margin-top:12px">
+          <button class="btn petit ligne" id="copier" type="button">📋 Copier le code</button>
+          <a class="btn petit whatsapp" target="_blank" rel="noopener"
+             href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur MOPILA CHECK pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
+        </div>
         <p style="margin-top:12px">Véhicule actuel : <b>${veh ? esc(veh.plaque) + " · " + MODES[veh.mode] : "aucun"}</b></p>
       </div>
 
@@ -941,6 +947,9 @@
 
     const zone = $("#contenu");
     try {
+      afficherBadges();
+      if (onglet === "avis") marquerVu("avis");
+      if (onglet === "utilisateurs") marquerVu("utilisateurs");
       if (onglet === "signalements") await adminSignalements(zone);
       else if (onglet === "documents") await adminDocuments(zone);
       else if (onglet === "vehicules") await adminVehicules(zone);
@@ -1371,6 +1380,7 @@
     });
     majSelecteurTest();
     majBoutonLangue();
+    if (etat.badges) afficherBadges();
   }
 
   function majBoutonLangue() {
@@ -1506,6 +1516,91 @@
     sel.value = roleVue();
   }
 
+  /* ---------- Pastilles de notification (chiffres rouges) ---------- */
+  etat.badges = { tabs: {}, onglets: {} };
+  const cleVu = (nom) => `mopila_vu_${nom}_${etat.session?.user?.id || ""}`;
+  function marquerVu(nom, valeur) { ecrireLocal(cleVu(nom), valeur ?? new Date().toISOString()); }
+
+  (function injecterStylePastilles() {
+    const st = document.createElement("style");
+    st.textContent = `.pastille{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:#D92D20;color:#fff;font:700 11px/1 'Public Sans',Arial,sans-serif;box-shadow:0 0 0 2px #FFFDF7}
+      .tabbar a .pastille{position:absolute;top:2px;left:calc(50% + 6px)}
+      .tabbar a.tab-scan .pastille{display:none}
+      .onglets button .pastille{margin-left:6px;box-shadow:none}
+      .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}`;
+    document.head.appendChild(st);
+  })();
+
+  async function compter(table, filtre) {
+    let q = sb.from(table).select("id", { count: "exact", head: true });
+    q = filtre(q);
+    const { count, error } = await q;
+    return error ? 0 : count || 0;
+  }
+
+  async function majBadges() {
+    if (!etat.session || !etat.profil) return;
+    const uid = etat.session.user.id;
+    const tabs = {}, onglets = {};
+    try {
+      // Client : plaintes traitées (confirmées ou rejetées) que l’utilisateur n’a pas encore vues
+      const { data: traites } = await sb.from("signalements").select("id").eq("client_id", uid).in("statut", ["confirme", "rejete"]);
+      const ids = (traites || []).map((s) => s.id);
+      let vus = lireLocal(cleVu("mesavis"), null);
+      if (vus === null) { marquerVu("mesavis", ids); vus = ids; }
+      tabs.avis = ids.filter((i) => !vus.includes(i)).length;
+
+      if (aRole("agent", "admin")) {
+        const depuisAvis = lireLocal(cleVu("avis"), new Date(0).toISOString());
+        const [sig, docs, veh, avis, recid] = await Promise.all([
+          compter("signalements", (q) => q.in("statut", ["nouveau", "en_verification"])),
+          compter("documents_chauffeur", (q) => q.eq("statut", "en_attente")),
+          compter("vehicules", (q) => q.eq("agree", false)),
+          compter("evaluations", (q) => q.gt("date_heure", depuisAvis)),
+          sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0)
+        ]);
+        Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid });
+        if (aRole("admin")) {
+          const depuisUsers = lireLocal(cleVu("utilisateurs"), new Date(0).toISOString());
+          onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
+        }
+        tabs.admin = Object.values(onglets).reduce((a, b) => a + b, 0) - (onglets.recidivistes || 0);
+      }
+
+      if (aRole("chauffeur")) {
+        const { data: d } = await sb.from("documents_chauffeur").select("type, statut, date_expiration").eq("chauffeur_id", uid);
+        const limite = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
+        // Le document le plus récent de chaque type : rejeté, expiré ou qui expire dans 30 jours
+        const parType = {};
+        (d || []).forEach((x) => { if (!parType[x.type] || x.date_expiration > parType[x.type].date_expiration) parType[x.type] = x; });
+        tabs.chauffeur = Object.values(parType).filter((x) => x.statut === "rejete" || x.date_expiration < limite).length;
+      }
+
+      if (aRole("proprietaire")) {
+        const { data: f } = await sb.rpc("suivi_flotte");
+        tabs.proprietaire = (f || []).reduce((n, v) => n + (v.plaintes_ouvertes || 0) + (v.doc_alerte ? 1 : 0) + (v.chauffeur_id && !v.chauffeur_conforme ? 1 : 0), 0);
+      }
+    } catch (_) { /* pas de pastille si une requête échoue */ }
+    etat.badges = { tabs, onglets };
+    afficherBadges();
+  }
+
+  const pastille = (n) => (n > 0 ? `<span class="pastille">${n > 99 ? "99+" : n}</span>` : "");
+  function afficherBadges() {
+    document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => {
+      a.querySelector(".pastille")?.remove();
+      const n = etat.badges.tabs[a.dataset.tab];
+      if (n > 0) a.insertAdjacentHTML("beforeend", pastille(n));
+    });
+    document.querySelectorAll(".onglets button[data-o]").forEach((b) => {
+      b.querySelector(".pastille")?.remove();
+      const n = etat.badges.onglets[b.dataset.o];
+      if (n > 0) b.insertAdjacentHTML("beforeend", pastille(n));
+    });
+  }
+  setInterval(() => { if (document.visibilityState === "visible") majBadges(); }, 60000);
+  document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") majBadges(); });
+
   /* ---------- Routeur ---------- */
   const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin };
 
@@ -1524,6 +1619,8 @@
     const nom = VUES[demande] ? demande : "verifier";
     document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === nom));
     try { await VUES[nom](); } catch (e) { erreur(e); }
+    afficherBadges();
+    majBadges();
     if (etat.session) journaliser("écran", NOMS_ECRANS[nom]);
     window.scrollTo(0, 0);
   }
