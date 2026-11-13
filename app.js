@@ -760,61 +760,167 @@
 
   /* ---------- Vue : Propriétaire ---------- */
   function lienQR(code) { return `${location.origin}${location.pathname}?v=${encodeURIComponent(code)}`; }
+  const pctTxt = (n) => (n == null ? "—" : n + " %");
 
   async function vueProprietaire() {
     if (!etat.session) return besoinConnexion("Mes véhicules");
     if (!aRole("proprietaire", "admin")) { app.innerHTML = `<div class="card">Cet espace est réservé aux propriétaires de véhicules.</div>`; return; }
+    const p = params();
+    if (p.v) return vueSuiviVehicule(Number(p.v));
     const uid = etat.session.user.id;
-    const { data: vehs, error } = await sb.from("vehicules")
-      .select("id, plaque, mode, agree, qr_code, affectations(chauffeur_id, actif)")
-      .eq("proprietaire_id", uid).order("created_at", { ascending: false });
+    const { data: flotte, error } = await sb.rpc("suivi_flotte");
     if (error) return erreur(error);
+    const somme = (k) => flotte.reduce((s, v) => s + Number(v[k] || 0), 0);
+    const alertes = flotte.filter((v) => v.plaintes_ouvertes > 0 || v.doc_alerte || (v.chauffeur_id && !v.chauffeur_conforme) || !v.chauffeur_id);
 
     app.innerHTML = `
       <p class="eyebrow">Propriétaire</p>
-      <h1>Mes véhicules</h1>
-      <form class="card" id="ajout">
-        <h3>Enregistrer un véhicule</h3>
-        <div class="row">
-          <div><label for="plaque">Plaque</label><input id="plaque" required></div>
-          <div><label for="mode">Type</label><select id="mode">${optionsModes("taxi_bus")}</select></div>
-        </div>
-        <button class="btn">Enregistrer</button>
-        <p class="muted" style="margin-top:8px">Un agent devra ensuite agréer le véhicule.</p>
-      </form>
-      ${(vehs || []).map((v) => {
-        const actif = (v.affectations || []).find((a) => a.actif);
-        return `<div class="card">
-          <div class="ligne-haut" style="display:flex;justify-content:space-between"><h2>${esc(v.plaque)}</h2><span class="badge ${v.agree ? "ok" : "att"}">${v.agree ? "Agréé" : "En attente d’agrément"}</span></div>
-          <p class="muted">${MODES[v.mode]} · chauffeur : ${actif ? "code " + esc(actif.chauffeur_id.slice(0, 8)) + "…" : "aucun"}</p>
-          <div class="qr-box" data-qr="${esc(lienQR(v.qr_code))}"></div>
-          <p class="muted">QR code à imprimer et coller dans le véhicule.</p>
-          <form class="affecter" data-id="${v.id}">
-            <label>Affecter un chauffeur (code chauffeur)</label>
-            <div class="row"><input name="code" required placeholder="Code donné par le chauffeur"><button class="btn petit">Affecter</button></div>
-          </form>
-        </div>`;
-      }).join("") || '<p class="muted">Aucun véhicule enregistré.</p>'}`;
+      <h1>Ma flotte</h1>
+      ${grille2(tuile(flotte.length, "véhicule(s)", true) + tuile(fc(somme("recette_jour")), "recette du jour")
+        + tuile(fc(somme("recette_mois")), "recette du mois") + tuile(somme("plaintes_ouvertes"), "plainte(s) en cours"))}
+      ${alertes.length ? `<div class="card accent"><h3>⚠️ À surveiller</h3><ul class="liste">${alertes.map((v) => `
+        <li><b>${esc(v.plaque)}</b> · <span class="muted">${[
+          !v.chauffeur_id ? "aucun chauffeur affecté" : "",
+          v.chauffeur_id && !v.chauffeur_conforme ? "chauffeur non conforme" : "",
+          v.doc_alerte ? "document du chauffeur bientôt expiré" : "",
+          v.plaintes_ouvertes ? v.plaintes_ouvertes + " plainte(s) en cours" : ""].filter(Boolean).join(" · ")}</span></li>`).join("")}</ul></div>` : ""}
+      ${flotte.map((v) => `
+        <div class="card">
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <div><h2 style="margin:0">${esc(v.plaque)}</h2><span class="muted">${MODES[v.mode]}</span></div>
+            <span class="badge ${v.agree ? "ok" : "att"}">${v.agree ? "Agréé" : "En attente d’agrément"}</span>
+          </div>
+          <p style="margin-top:10px">🚖 ${v.chauffeur_nom ? `<b>${esc(v.chauffeur_nom)}</b> <span class="badge ${v.chauffeur_conforme ? "ok" : "ko"}">${v.chauffeur_conforme ? "Conforme" : "Non conforme"}</span>` : '<span class="muted">Aucun chauffeur</span>'}</p>
+          <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;margin:8px 0">
+            <div><b>${fc(v.recette_jour)}</b><div class="muted" style="font-size:12px">aujourd’hui</div></div>
+            <div><b>${fc(v.recette_mois)}</b><div class="muted" style="font-size:12px">ce mois</div></div>
+            <div><b>${pctTxt(v.pct_prix_excellent)}</b><div class="muted" style="font-size:12px">prix respecté (${v.nb_avis} avis)</div></div>
+          </div>
+          ${v.plaintes_ouvertes || v.plaintes_confirmees ? `<p><span class="badge ko">${v.plaintes_ouvertes} plainte(s) en cours · ${v.plaintes_confirmees} confirmée(s)</span></p>` : ""}
+          <a class="btn" href="#/proprietaire?v=${v.vehicule_id}">📊 Voir le suivi complet</a>
+        </div>`).join("") || '<div class="card"><p class="muted">Aucun véhicule enregistré.</p></div>'}
+      ${flotte.length ? `<button class="btn ligne" id="exp-flotte" type="button">📊 Exporter ma flotte (Excel)</button>` : ""}
+      <details class="card" style="margin-top:16px" ${flotte.length ? "" : "open"}><summary><b>➕ Enregistrer un véhicule</b></summary>
+        <form id="ajout">
+          <div class="row">
+            <div><label for="plaque">Plaque</label><input id="plaque" required></div>
+            <div><label for="mode">Type</label><select id="mode">${optionsModes("taxi_bus")}</select></div>
+          </div>
+          <button class="btn">Enregistrer</button>
+          <p class="muted" style="margin-top:8px">Le QR code est créé aussitôt. Un agent devra ensuite agréer le véhicule.</p>
+        </form>
+      </details>`;
+
+    $("#ajout").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { data, error } = await sb.from("vehicules").insert({ plaque: $("#plaque").value.trim().toUpperCase().replace(/\s+/g, ""), mode: $("#mode").value, proprietaire_id: uid }).select("id").single();
+      if (error) return erreur(error.code === "23505" ? { message: "Cette plaque est déjà enregistrée." } : error);
+      toast("Véhicule enregistré.");
+      location.hash = "#/proprietaire?v=" + data.id;
+    });
+    $("#exp-flotte")?.addEventListener("click", () => telechargerCSV("ma_flotte", [
+      ["Plaque", "Mode", "Agréé", "Chauffeur", "Chauffeur conforme", "Recette du jour (FC)", "Recette 7 jours (FC)", "Recette du mois (FC)", "Courses du mois", "Avis", "Prix respecté (%)", "Chauffeur apprécié (%)", "Plaintes en cours", "Plaintes confirmées"],
+      ...flotte.map((v) => [v.plaque, MODES[v.mode], v.agree ? "oui" : "non", v.chauffeur_nom || "", v.chauffeur_conforme ? "oui" : "non", v.recette_jour, v.recette_semaine, v.recette_mois, v.courses_mois, v.nb_avis, v.pct_prix_excellent ?? "", v.pct_chauffeur_excellent ?? "", v.plaintes_ouvertes, v.plaintes_confirmees])]));
+  }
+
+  async function vueSuiviVehicule(id) {
+    const { data: s, error } = await sb.rpc("suivi_vehicule", { p_vehicule: id });
+    if (error) { erreur(error); location.hash = "#/proprietaire"; return; }
+    const v = s.vehicule, ch = s.chauffeur, r = s.recette, av = s.avis;
+    const auj = new Date().toISOString().slice(0, 10);
+    // Recette des 14 derniers jours, jours sans course compris
+    const jours = [];
+    for (let k = 13; k >= 0; k--) {
+      const d = new Date(); d.setDate(d.getDate() - k);
+      const cle = d.toISOString().slice(0, 10);
+      const x = (r.par_jour || []).find((j) => j.jour === cle);
+      jours.push({ jour: cle, montant: x ? Number(x.montant) : 0, courses: x ? x.courses : 0 });
+    }
+    const max = Math.max(1, ...jours.map((j) => j.montant));
+    const pc = (n) => (av.total ? Math.round((100 * n) / av.total) + " %" : "—");
+
+    app.innerHTML = `
+      <a href="#/proprietaire" class="muted" style="text-decoration:none">← Ma flotte</a>
+      <div style="display:flex;justify-content:space-between;align-items:center;gap:8px;margin-top:8px">
+        <div><p class="eyebrow">${MODES[v.mode]}</p><div class="verdict-plaque" style="display:inline-block;font-size:28px;margin:0">${esc(v.plaque)}</div></div>
+        <span class="badge ${v.agree ? "ok" : "att"}">${v.agree ? "Agréé" : "En attente d’agrément"}</span>
+      </div>
+
+      <div class="card" style="margin-top:16px">
+        <h2>1. Le chauffeur</h2>
+        ${ch ? `
+          <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
+            <div><b>${esc(ch.nom || "Chauffeur")}</b>${ch.telephone ? `<div class="muted">📞 ${esc(ch.telephone)}</div>` : ""}</div>
+            <span class="badge ${ch.conforme ? "ok" : "ko"}">${ch.conforme ? "Conforme" : "Non conforme"}</span>
+          </div>
+          <ul class="liste" style="margin-top:8px">${Object.entries(DOCS).filter(([k]) => k !== "vignette").map(([k, lib]) => {
+            const d = (ch.documents || []).filter((x) => x.type === k).sort((a, b) => (a.expiration < b.expiration ? 1 : -1))[0];
+            const etatDoc = !d ? '<span class="badge ko">Manquant</span>'
+              : d.statut !== "verifie" ? `<span class="badge att">${d.statut === "rejete" ? "Rejeté" : "En attente"}</span>`
+              : d.expiration < auj ? '<span class="badge ko">Expiré</span>'
+              : (new Date(d.expiration) - new Date()) / 86400000 < 30 ? `<span class="badge att">Expire le ${jourFr(d.expiration)}</span>`
+              : `<span class="badge ok">Valide</span>`;
+            return `<li><div class="ligne-haut"><span>${lib}</span>${etatDoc}</div></li>`;
+          }).join("")}</ul>`
+        : '<p class="muted">Aucun chauffeur affecté à ce véhicule.</p>'}
+        <form id="affecter" style="margin-top:10px">
+          <label>${ch ? "Changer de chauffeur" : "Affecter un chauffeur"} (code chauffeur)</label>
+          <div class="row"><input name="code" required placeholder="Code donné par le chauffeur"><button class="btn petit">Affecter</button></div>
+        </form>
+        ${s.historique.length > 1 ? `<details style="margin-top:10px"><summary class="muted">Historique des chauffeurs (${s.historique.length})</summary>
+          <ul class="liste">${s.historique.map((h) => `<li>${esc(h.nom || "—")} <span class="muted">· du ${dateFr(h.debut)}${h.fin ? " au " + dateFr(h.fin) : " à aujourd’hui"}</span></li>`).join("")}</ul></details>` : ""}
+      </div>
+
+      <div class="card">
+        <h2>2. La recette</h2>
+        ${grille2(tuile(fc(r.jour), "aujourd’hui", true) + tuile(fc(r.semaine), "7 derniers jours") + tuile(fc(r.mois), "ce mois") + tuile(r.courses_mois, "courses ce mois"))}
+        <h3>14 derniers jours</h3>
+        <div style="display:flex;align-items:flex-end;gap:3px;height:130px;margin-top:6px">${jours.map((j) => `
+          <div style="flex:1;display:flex;flex-direction:column;align-items:center;justify-content:flex-end;height:100%" title="${jourFr(j.jour)} : ${fc(j.montant)} (${j.courses} course(s))">
+            <div style="width:100%;background:${j.montant ? "#F2B705" : "#E2DCCB"};border-radius:3px 3px 0 0;height:${Math.max(3, (j.montant / max) * 100)}px"></div>
+            <span style="font-size:10px;color:#4A5568">${j.jour.slice(8, 10)}</span></div>`).join("")}</div>
+        <p class="muted" style="margin-top:8px">Recette déclarée par le chauffeur quand il note ses courses (prix × passagers).</p>
+      </div>
+
+      <div class="card">
+        <h2>3. Les avis des clients</h2>
+        ${av.total ? `
+          ${grille2(tuile(pc(av.prix_excellent), "prix respecté (Excellent)", true) + tuile(pc(av.chauffeur_excellent), "chauffeur apprécié"))}
+          <p class="muted">${av.total} avis au total</p>
+          <ul class="liste">${av.derniers.map((a) => `<li>${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)}
+            <div class="muted">${a.commentaire ? "« " + esc(a.commentaire) + " » · " : ""}${dateFr(a.date_heure)}</div></li>`).join("")}</ul>`
+        : '<p class="muted">Aucun avis pour l’instant.</p>'}
+      </div>
+
+      <div class="card">
+        <h2>4. Les plaintes</h2>
+        ${s.plaintes.length ? `<ul class="liste">${s.plaintes.map((x) => `
+          <li><div class="ligne-haut"><span>${esc(x.depart || "—")} → ${esc(x.arrivee || "—")}</span>${badgeStatut(x.statut)}</div>
+          <div class="muted">${dateFr(x.date_heure)} · demandé ${fc(x.prix_demande_fc)} · officiel ${fc(x.prix_officiel_fc)}${x.prix_officiel_fc ? ` · <b>+${fc(x.prix_demande_fc - x.prix_officiel_fc)}</b>` : ""}</div>
+          ${x.note_agent ? `<div class="muted">Note de l’agent : ${esc(x.note_agent)}</div>` : ""}</li>`).join("")}</ul>`
+        : '<p class="muted">Aucune plainte sur ce véhicule. 👏</p>'}
+      </div>
+
+      <div class="card" style="text-align:center">
+        <h2>5. QR code du véhicule</h2>
+        <div class="qr-box" data-qr="${esc(lienQR(v.qr_code))}"></div>
+        <p class="muted">À imprimer et coller dans le véhicule.</p>
+      </div>`;
 
     app.querySelectorAll(".qr-box").forEach((el) => {
       if (window.QRCode) new QRCode(el, { text: el.dataset.qr, width: 180, height: 180 });
       else el.textContent = el.dataset.qr;
     });
-    $("#ajout").addEventListener("submit", async (e) => {
+    $("#affecter").addEventListener("submit", async (e) => {
       e.preventDefault();
-      const { error } = await sb.from("vehicules").insert({ plaque: $("#plaque").value.trim().toUpperCase(), mode: $("#mode").value, proprietaire_id: uid });
-      if (error) return erreur(error.code === "23505" ? { message: "Cette plaque est déjà enregistrée." } : error);
-      toast("Véhicule enregistré."); vueProprietaire();
-    });
-    app.querySelectorAll(".affecter").forEach((f) => f.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const vid = Number(f.dataset.id), code = f.code.value.trim();
-      const r1 = await sb.from("affectations").update({ actif: false, fin: new Date().toISOString() }).eq("vehicule_id", vid).eq("actif", true);
+      const code = e.target.code.value.trim();
+      const r1 = await sb.from("affectations").update({ actif: false, fin: new Date().toISOString() }).eq("vehicule_id", v.id).eq("actif", true);
       if (r1.error) return erreur(r1.error);
-      const r2 = await sb.from("affectations").insert({ vehicule_id: vid, chauffeur_id: code });
+      const r2 = await sb.from("affectations").insert({ vehicule_id: v.id, chauffeur_id: code });
       if (r2.error) return erreur({ message: "Code chauffeur invalide ou inconnu." });
-      toast("Chauffeur affecté."); vueProprietaire();
-    }));
+      journaliser("chauffeur affecté", v.plaque);
+      toast("Chauffeur affecté."); vueSuiviVehicule(v.id);
+    });
   }
 
   /* ---------- Vue : Contrôle et administration ---------- */
@@ -1033,7 +1139,7 @@
 
   function tuile(n, t, accent = false) {
     return `<div style="background:${accent ? "#10233F" : "#FFFDF7"};color:${accent ? "#F6F3EA" : "#10233F"};border:1px solid #E2DCCB;border-top:5px solid #F2B705;border-radius:12px;padding:12px">
-      <div style="font-family:'Oswald',Arial,sans-serif;font-size:28px;font-weight:600;line-height:1.1">${n ?? 0}</div>
+      <div style="font-family:'Oswald',Arial,sans-serif;font-size:${String(n ?? 0).length > 8 ? 21 : 28}px;font-weight:600;line-height:1.1;white-space:nowrap">${n ?? 0}</div>
       <div style="font-size:13px;color:${accent ? "#C9D3E3" : "#4A5568"}">${t}</div></div>`;
   }
   const grille2 = (html) => `<div style="display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:16px">${html}</div>`;
