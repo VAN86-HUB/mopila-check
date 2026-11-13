@@ -1442,9 +1442,8 @@
     const { data } = await sb.from("signalements").select("id, plaque_saisie, statut")
       .eq("client_id", uid).in("statut", ["confirme", "rejete"]);
     if (!data) return;
-    const cle = "mopila_vus_" + uid;
-    const vus = lireLocal(cle, null);
-    ecrireLocal(cle, data.map((s) => s.id));
+    const vus = lireVu("notifiees", lireLocal("mopila_vus_" + uid, null));
+    marquerVu("notifiees", data.map((s) => s.id));
     if (vus === null) return; // premier passage : rien à annoncer
     const nouveaux = data.filter((s) => !vus.includes(s.id));
     if (!nouveaux.length) return;
@@ -1518,8 +1517,25 @@
 
   /* ---------- Pastilles de notification (chiffres rouges) ---------- */
   etat.badges = { tabs: {}, onglets: {} };
+  // Ce qui a été « vu » est gardé dans le compte de l’utilisateur (sur le serveur Supabase),
+  // donc identique sur tous ses téléphones. Une copie locale sert de secours hors ligne.
   const cleVu = (nom) => `mopila_vu_${nom}_${etat.session?.user?.id || ""}`;
-  function marquerVu(nom, valeur) { ecrireLocal(cleVu(nom), valeur ?? new Date().toISOString()); }
+  function lireVu(nom, defaut) {
+    const serveur = etat.session?.user?.user_metadata?.vus?.[nom];
+    if (serveur !== undefined) return serveur;
+    return lireLocal(cleVu(nom), defaut);
+  }
+  async function marquerVu(nom, valeur) {
+    const v = valeur ?? new Date().toISOString();
+    ecrireLocal(cleVu(nom), v);
+    if (!etat.session) return;
+    const vus = { ...(etat.session.user.user_metadata?.vus || {}), [nom]: Array.isArray(v) ? v.slice(-300) : v };
+    if (JSON.stringify(etat.session.user.user_metadata?.vus?.[nom]) === JSON.stringify(vus[nom])) return;
+    try {
+      const { data, error } = await sb.auth.updateUser({ data: { vus } });
+      if (!error && data?.user) etat.session.user = data.user;
+    } catch (_) { /* hors ligne : la copie locale suffit, le serveur sera mis à jour à la prochaine visite */ }
+  }
 
   (function injecterStylePastilles() {
     const st = document.createElement("style");
@@ -1546,12 +1562,12 @@
       // Client : plaintes traitées (confirmées ou rejetées) que l’utilisateur n’a pas encore vues
       const { data: traites } = await sb.from("signalements").select("id").eq("client_id", uid).in("statut", ["confirme", "rejete"]);
       const ids = (traites || []).map((s) => s.id);
-      let vus = lireLocal(cleVu("mesavis"), null);
+      let vus = lireVu("mesavis", null);
       if (vus === null) { marquerVu("mesavis", ids); vus = ids; }
       tabs.avis = ids.filter((i) => !vus.includes(i)).length;
 
       if (aRole("agent", "admin")) {
-        const depuisAvis = lireLocal(cleVu("avis"), new Date(0).toISOString());
+        const depuisAvis = lireVu("avis", new Date(0).toISOString());
         const [sig, docs, veh, avis, recid] = await Promise.all([
           compter("signalements", (q) => q.in("statut", ["nouveau", "en_verification"])),
           compter("documents_chauffeur", (q) => q.eq("statut", "en_attente")),
@@ -1561,7 +1577,7 @@
         ]);
         Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid });
         if (aRole("admin")) {
-          const depuisUsers = lireLocal(cleVu("utilisateurs"), new Date(0).toISOString());
+          const depuisUsers = lireVu("utilisateurs", new Date(0).toISOString());
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
         }
         tabs.admin = Object.values(onglets).reduce((a, b) => a + b, 0) - (onglets.recidivistes || 0);
