@@ -73,13 +73,24 @@
   const LANG_KEY = "mopila_langue";
   const TXT = {
     fr: {
+      tab_avis: "Mes avis", noter_eyebrow: "Avis sur la course", noter_titre: "Notez votre course",
+      noter_course: "Noter cette course", scan_requis: "Pour noter une course, scannez le QR code collé dans le véhicule. C’est la seule façon d’identifier votre taxi.",
+      votre_trajet: "Votre trajet", note_prix: "Respect du prix", note_chauffeur: "Le chauffeur", choisir: "Choisir",
+      excellent: "Excellent", mediocre: "Médiocre", excellent_prix: "il a respecté le prix officiel", mediocre_prix: "il a majoré le prix",
+      excellent_chauffeur: "poli, prudent, honnête", mediocre_chauffeur: "impoli, imprudent ou malhonnête",
+      prix_demande: "Prix demandé (FC)", photo: "Photo (facultatif)", commentaire: "Commentaire (facultatif)",
+      commentaire_ph: "Ce qui s’est bien ou mal passé…", envoyer_avis: "Envoyer mon avis", trajet_requis: "Choisissez votre départ et votre arrivée dans la liste.",
+      merci_avis: "Merci pour votre avis !", merci_excellent: "Votre avis aide les bons chauffeurs à être reconnus.",
+      merci_mediocre: "La majoration a été transmise aux agents de contrôle. Vous serez informé de la suite.",
+      mes_avis_titre: "Mes avis sur les courses", suivi_signalement: "Suivi du contrôle", aucun_avis: "Vous n’avez encore noté aucune course.",
+      avis: "avis", avis_prix: "prix respecté", avis_chauffeur: "chauffeur apprécié",
       tab_prix: "Prix", tab_signaler: "Signaler", tab_scanner: "Scanner", tab_compte: "Compte",
       tab_chauffeur: "Chauffeur", tab_vehicules: "Véhicules", tab_admin: "Admin",
       prix_eyebrow: "Grille tarifaire officielle", prix_titre: "Quel est le bon prix ?",
       prix_intro: "Tapez votre départ et votre arrivée : le tarif officiel s’affiche, même sans connexion.",
       depart: "Départ", arrivee: "Arrivée", type_vehicule: "Type de véhicule", tapez_lieu: "Tapez un lieu…",
       inverser: "⇅ Inverser", recents: "Trajets récents", favoris: "⭐ Mes favoris",
-      prix_officiel: "Prix officiel", plus_cher: "On vous demande plus ? Signaler", ajouter_favori: "☆ Ajouter aux favoris",
+      prix_officiel: "Prix officiel", plus_cher: "📷 Scanner le véhicule pour noter la course", ajouter_favori: "☆ Ajouter aux favoris",
       retirer_favori: "⭐ Retirer des favoris", partager: "Partager sur WhatsApp", pas_de_tarif: "Trajet pas encore dans la grille",
       pas_de_tarif_txt: "Ce trajet n’a pas encore de prix officiel. Essayez un autre type de véhicule ou un trajet proche.",
       classement: "🏆 Chauffeurs exemplaires du mois", classement_vide: "Pas encore de chauffeur classé ce mois-ci.",
@@ -101,13 +112,24 @@
       suivant: "Suivant", commencer: "Commencer", passer: "Passer", langue: "Langue"
     },
     ln: {
+      tab_avis: "Makanisi na ngai", noter_eyebrow: "Likanisi na mobembo", noter_titre: "Pesa likanisi na mobembo na yo",
+      noter_course: "Pesa likanisi", scan_requis: "Mpo na kopesa likanisi, scanner QR code oyo ezali na kati ya motuka. Ezali nzela kaka moko ya koyeba taxi na yo.",
+      votre_trajet: "Mobembo na yo", note_prix: "Kotosa ntalo", note_chauffeur: "Shofɛ́lɛ", choisir: "Pona",
+      excellent: "Malamu mingi", mediocre: "Mabe", excellent_prix: "atosaki ntalo ya Leta", mediocre_prix: "abakisaki ntalo",
+      excellent_chauffeur: "na limemya, akebi, sembo", mediocre_chauffeur: "limemya te, akebi te to sembo te",
+      prix_demande: "Ntalo basengaki (FC)", photo: "Foto (soki olingi)", commentaire: "Maloba (soki olingi)",
+      commentaire_ph: "Nini elekaki malamu to mabe…", envoyer_avis: "Tinda likanisi na ngai", trajet_requis: "Pona esika ya kolongwa mpe ya kokende na liste.",
+      merci_avis: "Matɔndi mpo na likanisi na yo !", merci_excellent: "Likanisi na yo esalisi bashofɛ́lɛ ya malamu bayebana.",
+      merci_mediocre: "Ntalo oyo babakisaki etindami epai ya ba agents. Okoyebisama nsima.",
+      mes_avis_titre: "Makanisi na ngai na mibembo", suivi_signalement: "Bolandi ya contrôle", aucun_avis: "Opesi naino likanisi te.",
+      avis: "makanisi", avis_prix: "ntalo etosamaki", avis_chauffeur: "shofɛ́lɛ alingami",
       tab_prix: "Ntalo", tab_signaler: "Kofunda", tab_scanner: "Scanner", tab_compte: "Ngai",
       tab_chauffeur: "Shofɛ́lɛ", tab_vehicules: "Mituka", tab_admin: "Admin",
       prix_eyebrow: "Ntalo ya Leta", prix_titre: "Ntalo ya solo ezali boni ?",
       prix_intro: "Koma esika okolongwa mpe esika okokende : ntalo ya Leta ekobima, ata soki internet ezali te.",
       depart: "Esika ya kolongwa", arrivee: "Esika ya kokende", type_vehicule: "Lolenge ya motuka", tapez_lieu: "Koma kombo ya esika…",
       inverser: "⇅ Kobongola", recents: "Mibembo ya sika", favoris: "⭐ Mibembo nalingi",
-      prix_officiel: "Ntalo ya Leta", plus_cher: "Basengi yo mbongo mingi ? Funda", ajouter_favori: "☆ Kobakisa na oyo nalingi",
+      prix_officiel: "Ntalo ya Leta", plus_cher: "📷 Scanner motuka mpo na kopesa likanisi", ajouter_favori: "☆ Kobakisa na oyo nalingi",
       retirer_favori: "⭐ Kolongola", partager: "Kokabola na WhatsApp", pas_de_tarif: "Mobembo oyo ezali naino te",
       pas_de_tarif_txt: "Mobembo oyo ezali naino na ntalo ya Leta te. Meka lolenge mosusu ya motuka.",
       classement: "🏆 Bashofɛ́lɛ ya malamu ya sanza oyo", classement_vide: "Shofɛ́lɛ moko te naino na sanza oyo.",
@@ -259,7 +281,7 @@
             <button class="btn petit ligne-claire" id="fav" type="button">${estFav ? t("retirer_favori") : t("ajouter_favori")}</button>
             <a class="btn petit whatsapp" href="https://wa.me/?text=${encodeURIComponent(msg)}" target="_blank" rel="noopener">${t("partager")}</a>
           </div>
-          <a class="btn jaune" href="#/signaler?dep=${dep}&arr=${arr}&mode=${mode}">${t("plus_cher")}</a>
+          <a class="btn jaune" href="#/verifier?scan=1">${t("plus_cher")}</a>
         </div>`;
       $("#fav").addEventListener("click", () => {
         const liste = lireLocal(FAV_KEY, []);
@@ -301,9 +323,9 @@
     if (!$("#classement")) return;
     if (error || !data?.length) { z.innerHTML = `<h3>${t("classement")}</h3><p class="muted">${t("classement_vide")}</p>`; return; }
     const medailles = ["🥇", "🥈", "🥉", "4.", "5."];
-    const texte = `${t("classement")}\n` + data.map((c, i) => `${medailles[i]} ${c.nom} (${c.courses} ${t("courses")})`).join("\n") + `\nMOPILA CHECK : ${location.origin + location.pathname}`;
+    const texte = `${t("classement")}\n` + data.map((c, i) => `${medailles[i]} ${c.nom} (👍 ${c.excellents} ${t("avis")})`).join("\n") + `\nMOPILA CHECK : ${location.origin + location.pathname}`;
     z.innerHTML = `<h3>${t("classement")}</h3>
-      <ul class="liste">${data.map((c, i) => `<li><div class="ligne-haut"><span>${medailles[i]} <b>${esc(c.nom)}</b></span><span class="badge ok">${c.courses} ${t("courses")}</span></div></li>`).join("")}</ul>
+      <ul class="liste">${data.map((c, i) => `<li><div class="ligne-haut"><span>${medailles[i]} <b>${esc(c.nom)}</b></span><span class="badge ok">👍 ${c.excellents} / ${c.avis} ${t("avis")}</span></div></li>`).join("")}</ul>
       <a class="btn petit whatsapp" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${t("partager_classement")}</a>`;
   }
 
@@ -314,7 +336,7 @@
 
   function fermerVerdict() { document.getElementById("verdict")?.remove(); }
 
-  function afficherVerdict(v) {
+  function afficherVerdict(v, code) {
     fermerVerdict();
     const ok = v && v.agree && v.chauffeur_conforme && v.signalements_confirmes < 2;
     try { navigator.vibrate?.(ok ? 80 : [200, 100, 200]); } catch (_) { /* vibration indisponible */ }
@@ -331,9 +353,10 @@
         <li>${v.agree ? "✔" : "✖"} ${v.agree ? t("agree") : t("non_agree")}</li>
         <li>${v.chauffeur_conforme ? "✔" : "✖"} ${v.chauffeur_conforme ? t("conforme") : t("non_conforme")}</li>
         ${v.signalements_confirmes ? `<li>✖ ${v.signalements_confirmes} ${t("deja_signale")}</li>` : ""}
+        ${v.nb_avis ? `<li>⭐ ${v.nb_avis} ${t("avis")} : ${v.pct_prix_excellent} % ${t("avis_prix")}, ${v.pct_chauffeur_excellent} % ${t("avis_chauffeur")}</li>` : ""}
       </ul>
-      <a class="btn jaune" id="v-prix" href="#/prix?mode=${v.mode}">${t("voir_prix")}</a>
-      <a class="btn ligne-claire" id="v-sig" href="#/signaler?plaque=${encodeURIComponent(v.plaque)}&mode=${v.mode}">${t("signaler_vehicule")}</a>
+      ${code && etat.session ? `<a class="btn jaune gros" href="#/signaler?v=${encodeURIComponent(code)}">⭐ ${t("noter_course")}</a>` : ""}
+      <a class="btn ligne-claire" id="v-prix" href="#/prix?mode=${v.mode}">${t("voir_prix")}</a>
       <button class="btn ligne-claire" id="v-fermer" type="button">${t("fermer")}</button>`
       : `<div class="verdict-icone">❓</div><h1>${t("inconnu_titre")}</h1><p>${t("inconnu_txt")}</p>
       <button class="btn jaune" id="v-fermer" type="button">${t("fermer")}</button>`;
@@ -362,7 +385,7 @@
       $("#code").value = code;
       const { data, error } = await sb.rpc("verifier_vehicule", { p_qr: code });
       if (error) return erreur(error);
-      afficherVerdict(data?.[0] || null);
+      afficherVerdict(data?.[0] || null, code);
       journaliser("scan", data?.[0]?.plaque || "code inconnu");
     };
 
@@ -391,7 +414,7 @@
     }
   }
 
-  /* ---------- Vue : Signaler ---------- */
+  /* ---------- Vue : Noter une course (uniquement après un scan) ---------- */
   function besoinConnexion(titre) {
     app.innerHTML = `
       <h1>${titre}</h1>
@@ -399,76 +422,140 @@
       <a class="btn" href="#/compte?retour=${encodeURIComponent(location.hash)}">Se connecter ou créer un compte</a></div>`;
   }
 
-  function vueSignaler() {
-    if (!etat.session) return besoinConnexion("Signaler un abus");
+  const NOTE_LIB = () => ({ excellent: t("excellent"), mediocre: t("mediocre") });
+  const badgeNote = (n) => `<span class="badge ${n === "excellent" ? "ok" : "ko"}">${n === "excellent" ? "👍 " : "👎 "}${NOTE_LIB()[n]}</span>`;
+
+  async function vueNoter() {
+    if (!etat.session) return besoinConnexion(t("noter_titre"));
     const p = params();
+    if (!p.v) {
+      app.innerHTML = `
+        <p class="eyebrow">${t("tab_avis")}</p>
+        <h1>${t("noter_titre")}</h1>
+        <div class="card accent"><div style="font-size:56px;text-align:center">📷</div>
+          <p style="text-align:center">${t("scan_requis")}</p>
+          <a class="btn jaune gros" href="#/verifier?scan=1">${t("scanner_qr")}</a></div>`;
+      return;
+    }
+    const { data, error } = await sb.rpc("verifier_vehicule", { p_qr: p.v });
+    if (error) return erreur(error);
+    const v = data?.[0];
+    if (!v) { afficherVerdict(null); location.hash = "#/verifier"; return; }
+
     app.innerHTML = `
-      <p class="eyebrow">Signalement</p>
-      <h1>${t("sig_titre")}</h1>
+      <p class="eyebrow">${t("noter_eyebrow")}</p>
+      <h1>${t("noter_titre")}</h1>
+      <div class="card dark" style="display:flex;align-items:center;gap:14px">
+        <div class="verdict-plaque" style="font-size:24px;margin:0">${esc(v.plaque)}</div>
+        <div><b>${MODES[v.mode]}</b><div class="muted">${esc(v.chauffeur_nom || "—")}</div></div>
+      </div>
       <form class="card" id="form">
-        <label for="mode">Type de véhicule</label>
-        <select id="mode" required>${optionsModes(p.mode || "taxi_bus")}</select>
-        <label for="plaque">Plaque du véhicule</label>
-        <input id="plaque" required placeholder="Ex. 1234AB01" value="${esc(p.plaque || "")}">
-        <div class="row">
-          <div><label for="dep">Départ</label><select id="dep">${optionsLieux(p.dep)}</select></div>
-          <div><label for="arr">Arrivée</label><select id="arr">${optionsLieux(p.arr)}</select></div>
+        <h3>1. ${t("votre_trajet")}</h3>
+        ${champLieu("dep", t("depart"), p.dep)}
+        ${champLieu("arr", t("arrivee"), p.arr)}
+        <div id="officiel" class="officiel"></div>
+
+        <h3 style="margin-top:18px">2. ${t("note_prix")}</h3>
+        <select id="note_prix" required>
+          <option value="">— ${t("choisir")} —</option>
+          <option value="excellent">👍 ${t("excellent")} : ${t("excellent_prix")}</option>
+          <option value="mediocre">👎 ${t("mediocre")} : ${t("mediocre_prix")}</option>
+        </select>
+        <div id="bloc-majore" hidden>
+          <label for="prix">${t("prix_demande")}</label>
+          <input id="prix" type="number" min="50" step="50" inputmode="numeric">
+          <p id="ecart" class="muted"></p>
+          <label for="photo">${t("photo")}</label>
+          <input id="photo" type="file" accept="image/*" capture="environment">
         </div>
-        <p id="officiel" class="muted"></p>
-        <label for="prix">Prix demandé (FC)</label>
-        <input id="prix" type="number" min="1" step="50" required inputmode="numeric">
-        <label for="photo">Photo (facultatif)</label>
-        <input id="photo" type="file" accept="image/*" capture="environment">
-        <label for="com">Commentaire (facultatif)</label>
-        <textarea id="com" placeholder="Heure, lieu, ce qui s’est passé…"></textarea>
-        <button class="btn jaune" id="envoyer">Envoyer le signalement</button>
+
+        <h3 style="margin-top:18px">3. ${t("note_chauffeur")}</h3>
+        <select id="note_chauffeur" required>
+          <option value="">— ${t("choisir")} —</option>
+          <option value="excellent">👍 ${t("excellent")} : ${t("excellent_chauffeur")}</option>
+          <option value="mediocre">👎 ${t("mediocre")} : ${t("mediocre_chauffeur")}</option>
+        </select>
+
+        <label for="com">${t("commentaire")}</label>
+        <textarea id="com" maxlength="500" placeholder="${t("commentaire_ph")}"></textarea>
+        <button class="btn jaune gros" id="envoyer">${t("envoyer_avis")}</button>
       </form>`;
 
-    const maj = () => {
-      const t = prixLocal($("#dep").value, $("#arr").value, $("#mode").value);
-      $("#officiel").innerHTML = t ? `Prix officiel de ce trajet : <b>${fc(t.prix_fc)}</b>` : "";
+    const majPrix = () => {
+      const tr = prixLocal($("#dep").dataset.id, $("#arr").dataset.id, v.mode);
+      $("#officiel").innerHTML = tr ? `${t("prix_officiel")} : <b>${fc(tr.prix_fc)}</b>` : "";
+      const d = Number($("#prix").value);
+      $("#ecart").innerHTML = tr && d > tr.prix_fc ? `+${fc(d - tr.prix_fc)} (${Math.round((d / tr.prix_fc - 1) * 100)} %)` : "";
     };
-    ["#dep", "#arr", "#mode"].forEach((s) => $(s).addEventListener("change", maj));
-    maj();
+    activerChamp("dep", majPrix);
+    activerChamp("arr", majPrix);
+    $("#prix").addEventListener("input", majPrix);
+    $("#note_prix").addEventListener("change", () => {
+      const m = $("#note_prix").value === "mediocre";
+      $("#bloc-majore").hidden = !m;
+      $("#prix").required = m;
+    });
+    majPrix();
 
     $("#form").addEventListener("submit", async (e) => {
       e.preventDefault();
       const b = $("#envoyer"); b.disabled = true;
       try {
-        let photo_url = null;
-        const f = $("#photo").files[0];
+        if (!$("#dep").dataset.id || !$("#arr").dataset.id) throw new Error(t("trajet_requis"));
+        const mediocre = $("#note_prix").value === "mediocre";
+        let photo = null;
+        const f = mediocre ? $("#photo").files[0] : null;
         if (f) {
           if (f.size > 5 * 1024 * 1024) throw new Error("La photo dépasse 5 Mo.");
           const ext = (f.type.split("/")[1] || "jpg").replace("jpeg", "jpg");
-          const chemin = `${etat.session.user.id}/${Date.now()}.${ext}`;
-          const up = await sb.storage.from("photos").upload(chemin, f, { contentType: f.type });
+          photo = `${etat.session.user.id}/${Date.now()}.${ext}`;
+          const up = await sb.storage.from("photos").upload(photo, f, { contentType: f.type });
           if (up.error) throw up.error;
-          photo_url = chemin;
         }
-        const { error } = await sb.from("signalements").insert({
-          mode: $("#mode").value,
-          plaque_saisie: $("#plaque").value.trim().toUpperCase(),
-          depart_id: $("#dep").value || null,
-          arrivee_id: $("#arr").value || null,
-          prix_demande_fc: Number($("#prix").value),
-          commentaire: $("#com").value.trim() || null,
-          photo_url
+        const { error } = await sb.rpc("noter_course", {
+          p_qr: p.v, p_depart: Number($("#dep").dataset.id), p_arrivee: Number($("#arr").dataset.id),
+          p_note_prix: $("#note_prix").value, p_prix_demande: mediocre ? Number($("#prix").value) : null,
+          p_note_chauffeur: $("#note_chauffeur").value, p_commentaire: $("#com").value.trim() || null, p_photo: photo
         });
         if (error) throw error;
-        toast("Merci ! Votre signalement a été envoyé aux agents de contrôle.");
-        location.hash = "#/compte";
-      } catch (err) { erreur(err); } finally { b.disabled = false; }
+        journaliser("avis", `${v.plaque} : prix ${$("#note_prix").value}, chauffeur ${$("#note_chauffeur").value}`);
+        app.innerHTML = `
+          <div class="card ${mediocre ? "accent" : "dark"} apparition" style="text-align:center">
+            <div style="font-size:72px">${mediocre ? "🛡️" : "🙏"}</div>
+            <h1>${t("merci_avis")}</h1>
+            <p class="muted">${mediocre ? t("merci_mediocre") : t("merci_excellent")}</p>
+            <a class="btn jaune" href="#/avis">${t("tab_avis")}</a>
+            <a class="btn ligne${mediocre ? "" : "-claire"}" href="#/verifier">${t("fermer")}</a>
+          </div>`;
+      } catch (err) { erreur(err); b.disabled = false; }
     });
+  }
+
+  /* ---------- Vue : Mes avis ---------- */
+  async function vueMesAvis() {
+    if (!etat.session) return besoinConnexion(t("tab_avis"));
+    const { data, error } = await sb.from("evaluations")
+      .select("id, note_prix, note_chauffeur, prix_officiel_fc, prix_demande_fc, mode, depart_id, arrivee_id, commentaire, date_heure, signalements(statut)")
+      .eq("client_id", etat.session.user.id).order("date_heure", { ascending: false }).limit(50);
+    if (error) return erreur(error);
+    app.innerHTML = `
+      <p class="eyebrow">${t("tab_avis")}</p>
+      <h1>${t("mes_avis_titre")}</h1>
+      <a class="btn jaune gros" href="#/verifier?scan=1" style="margin-bottom:16px">⭐ ${t("noter_course")}</a>
+      ${data.length ? data.map((a) => `
+        <div class="card">
+          <div class="ligne-haut" style="display:flex;justify-content:space-between;gap:8px"><b>${esc(lieuNom(a.depart_id))} → ${esc(lieuNom(a.arrivee_id))}</b><span class="muted">${dateFr(a.date_heure)}</span></div>
+          <p class="muted">${MODES[a.mode]} · ${t("prix_officiel")} ${fc(a.prix_officiel_fc)}${a.prix_demande_fc ? ` · ${t("prix_demande")} ${fc(a.prix_demande_fc)}` : ""}</p>
+          <p>${t("note_prix")} : ${badgeNote(a.note_prix)}<br>${t("note_chauffeur")} : ${badgeNote(a.note_chauffeur)}</p>
+          ${a.signalements ? `<p>${t("suivi_signalement")} : ${badgeStatut(a.signalements.statut)}</p>` : ""}
+          ${a.commentaire ? `<p class="muted">« ${esc(a.commentaire)} »</p>` : ""}
+        </div>`).join("") : `<div class="card"><p class="muted">${t("aucun_avis")}</p></div>`}`;
   }
 
   /* ---------- Vue : Compte ---------- */
   async function vueCompte() {
     if (!etat.session) return vueConnexion();
     const p = etat.profil || {};
-    const { data: sigs } = await sb.from("signalements")
-      .select("id, plaque_saisie, mode, prix_demande_fc, prix_officiel_fc, statut, date_heure")
-      .eq("client_id", etat.session.user.id).order("date_heure", { ascending: false }).limit(20);
-
     const espaces = [];
     if (aRole("chauffeur")) espaces.push(`<a class="btn" href="#/chauffeur">🚖 Mon espace chauffeur</a>`);
     if (aRole("proprietaire", "admin")) espaces.push(`<a class="btn" href="#/proprietaire">🚌 Mes véhicules</a>`);
@@ -486,13 +573,7 @@
         </form>
       </div>
       ${espaces.join("")}
-      <div class="card" style="margin-top:16px">
-        <h2>Mes signalements</h2>
-        ${sigs?.length ? `<ul class="liste">${sigs.map((s) => `
-          <li><div class="ligne-haut"><b>${esc(s.plaque_saisie || "—")}</b>${badgeStatut(s.statut)}</div>
-          <div class="muted">${MODES[s.mode]} · demandé ${fc(s.prix_demande_fc)} · officiel ${fc(s.prix_officiel_fc)} · ${dateFr(s.date_heure)}</div></li>`).join("")}</ul>`
-        : `<p class="muted">Aucun signalement pour l’instant.</p>`}
-      </div>
+      <a class="btn ligne" href="#/avis" style="margin-top:16px">⭐ ${t("tab_avis")}</a>
       <button class="btn ligne" id="sortir">Se déconnecter</button>
       <p class="footer-note">${esc(C.appName)} · conçu par ${esc(C.auteur)} · ${esc(C.contact)}</p>`;
 
@@ -565,12 +646,15 @@
     const uid = etat.session.user.id;
     if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
     const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
-    const [conf, docs, aff, courses] = await Promise.all([
+    const [conf, docs, aff, courses, avis] = await Promise.all([
       sb.rpc("chauffeur_est_conforme", { p_chauffeur: uid }),
       sb.from("documents_chauffeur").select("*").eq("chauffeur_id", uid).order("created_at", { ascending: false }),
       sb.from("affectations").select("vehicule_id, vehicules(plaque, mode, agree)").eq("chauffeur_id", uid).eq("actif", true).maybeSingle(),
-      sb.from("courses").select("*").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(30)
+      sb.from("courses").select("*").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(30),
+      sb.from("evaluations").select("note_prix, note_chauffeur, commentaire, date_heure").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(200)
     ]);
+    const av = avis.data || [];
+    const pct = (k) => (av.length ? Math.round((100 * av.filter((a) => a[k] === "excellent").length) / av.length) : 0);
     const conforme = conf.data === true;
     const veh = aff.data?.vehicules;
     const coursesJour = (courses.data || []).filter((c) => new Date(c.date_heure) >= aujourdhui);
@@ -610,6 +694,18 @@
           </div>
           <button class="btn">Déposer pour vérification</button>
         </form>
+      </div>
+
+      <div class="card">
+        <h2>⭐ Avis des clients</h2>
+        ${av.length ? `
+          <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
+            ${tuile(pct("note_prix") + " %", "prix respecté (Excellent)", true)}${tuile(pct("note_chauffeur") + " %", "conduite appréciée")}
+          </div>
+          <p class="muted">${av.length} avis au total</p>
+          <ul class="liste">${av.filter((a) => a.commentaire).slice(0, 5).map((a) => `<li>${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)}
+            <div class="muted">« ${esc(a.commentaire)} » · ${dateFr(a.date_heure)}</div></li>`).join("")}</ul>`
+        : '<p class="muted">Aucun avis pour l’instant. Les clients notent la course en scannant le QR code du véhicule.</p>'}
       </div>
 
       <div class="card">
@@ -726,8 +822,8 @@
     if (!etat.session) return besoinConnexion("Espace contrôle");
     if (!aRole("agent", "admin")) { app.innerHTML = `<div class="card">Cet espace est réservé aux agents de contrôle et aux administrateurs.</div>`; return; }
     const onglets = aRole("admin")
-      ? { tableau: "Tableau de bord", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
-      : { signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
+      ? { tableau: "Tableau de bord", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
+      : { signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
     const onglet = onglets[params().o] ? params().o : Object.keys(onglets)[0];
 
     app.innerHTML = `
@@ -747,6 +843,7 @@
       else if (onglet === "trajets") await adminGrille(zone);
       else if (onglet === "utilisateurs") await adminUtilisateurs(zone);
       else if (onglet === "journal") await adminJournal(zone);
+      else if (onglet === "avis") await adminAvis(zone);
     } catch (e) { erreur(e); }
   }
 
@@ -1104,6 +1201,32 @@
     }));
   }
 
+  async function adminAvis(zone) {
+    const [st, li] = await Promise.all([
+      sb.rpc("stats_avis"),
+      sb.from("evaluations").select("id, note_prix, note_chauffeur, prix_officiel_fc, prix_demande_fc, mode, depart_id, arrivee_id, commentaire, date_heure, vehicules(plaque), chauffeurs(profils(nom)), client:profils!evaluations_client_id_fkey(nom)")
+        .order("date_heure", { ascending: false }).limit(100)
+    ]);
+    if (st.error) throw st.error;
+    if (li.error) throw li.error;
+    const s = st.data, pc = (a, b) => (a + b ? Math.round((100 * a) / (a + b)) : 0);
+    zone.innerHTML = `
+      ${grille2(tuile(s.total, "avis au total", true) + tuile(s.semaine, "avis ces 7 jours") + tuile(pc(s.prix_excellent, s.prix_mediocre) + " %", "prix respecté (Excellent)") + tuile(pc(s.chauffeur_excellent, s.chauffeur_mediocre) + " %", "chauffeurs appréciés"))}
+      <div class="card"><h2>Derniers avis</h2>
+        <div class="row"><select id="fa"><option value="">Tous les avis</option><option value="mediocre">Prix : Médiocre seulement</option><option value="excellent">Prix : Excellent seulement</option></select>
+        <button class="btn petit ligne" id="exp-avis" type="button">📊 Excel</button></div>
+        <ul class="liste" id="la" style="margin-top:8px">${li.data.map((a) => `
+          <li data-n="${a.note_prix}"><div class="ligne-haut"><b>${esc(a.vehicules?.plaque || "—")}</b><span class="muted">${dateFr(a.date_heure)}</span></div>
+          <div class="muted">${MODES[a.mode]} · ${esc(lieuNom(a.depart_id))} → ${esc(lieuNom(a.arrivee_id))} · chauffeur : ${esc(a.chauffeurs?.profils?.nom || "—")} · client : ${esc(a.client?.nom || "—")}</div>
+          <div>Prix ${badgeNote(a.note_prix)} Chauffeur ${badgeNote(a.note_chauffeur)}</div>
+          ${a.prix_demande_fc ? `<div class="muted">Demandé ${fc(a.prix_demande_fc)} · officiel ${fc(a.prix_officiel_fc)}</div>` : ""}
+          ${a.commentaire ? `<div class="muted">« ${esc(a.commentaire)} »</div>` : ""}</li>`).join("") || '<li class="muted">Aucun avis.</li>'}</ul>
+      </div>`;
+    $("#fa").addEventListener("change", (e) => zone.querySelectorAll("#la li[data-n]").forEach((x) => (x.hidden = !!e.target.value && x.dataset.n !== e.target.value)));
+    $("#exp-avis").addEventListener("click", () => telechargerCSV("avis", [["Date", "Plaque", "Mode", "Départ", "Arrivée", "Chauffeur", "Client", "Note prix", "Note chauffeur", "Prix officiel (FC)", "Prix demandé (FC)", "Commentaire"],
+      ...li.data.map((a) => [dateFr(a.date_heure), a.vehicules?.plaque, MODES[a.mode], lieuNom(a.depart_id), lieuNom(a.arrivee_id), a.chauffeurs?.profils?.nom, a.client?.nom, a.note_prix === "excellent" ? "Excellent" : "Médiocre", a.note_chauffeur === "excellent" ? "Excellent" : "Médiocre", a.prix_officiel_fc, a.prix_demande_fc, a.commentaire])]));
+  }
+
   async function adminJournal(zone) {
     const { data, error } = await sb.from("journal_activite")
       .select("action, detail, date_heure, profils(nom, role)").order("date_heure", { ascending: false }).limit(200);
@@ -1114,7 +1237,7 @@
   }
 
   /* ---------- Journal ---------- */
-  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Signalement", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration" };
+  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Noter une course", avis: "Mes avis", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration" };
   function journaliser(action, detail) {
     if (!etat.session) return;
     sb.from("journal_activite").insert({ action, detail: detail ? String(detail).slice(0, 200) : null }).then(() => {}, () => {});
@@ -1129,7 +1252,7 @@
       : aRole("agent", "admin") ? ["admin", "#/admin", "🛡️", t("tab_admin")] : null;
     const items = [
       ["prix", "#/prix", "💰", t("tab_prix")],
-      ["signaler", "#/signaler", "⚠️", t("tab_signaler")],
+      ["avis", "#/avis", "⭐", t("tab_avis")],
       ["verifier", "#/verifier?scan=1", "📷", t("tab_scanner"), true],
       ["compte", "#/compte", "👤", t("tab_compte")]
     ];
@@ -1278,7 +1401,7 @@
   }
 
   /* ---------- Routeur ---------- */
-  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueSignaler, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin };
+  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin };
 
   async function route() {
     fermerVerdict();
