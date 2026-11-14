@@ -619,7 +619,7 @@
       await chargerProfil(); toast("Profil enregistré.");
     });
     activerMesMessages();
-    $("#sortir").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = "#/prix"; });
+    $("#sortir").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = "#/bienvenue"; });
   }
 
   function badgeStatut(s) {
@@ -748,7 +748,7 @@
       if (error) return erreur(error);
       journaliser("mot de passe changé");
       toast("Mot de passe enregistré. Vous êtes connecté.");
-      location.hash = "#/verifier";
+      location.hash = "#/accueil";
     });
   }
 
@@ -1268,101 +1268,83 @@
     }));
   }
 
-  /* ---------- Accueil : chaque rôle a ses rubriques bien rangées ---------- */
-  const tuileHTML = (href, ico, titre, sous, badge, large) =>
-    `<a class="tuile${large ? " large" : ""}" href="${href}" ${badge ? `data-b="${badge}"` : ""}>
-      <span class="ico">${ico}</span><div><b>${titre}</b>${sous ? `<br><small>${sous}</small>` : ""}</div></a>`;
-  const groupe = (titre, tuiles) => `<div class="groupe-titre">${titre}</div><div class="tuiles">${tuiles.join("")}</div>`;
-
-  // Rubriques de l'administration, rangées en 4 familles
-  function famillesAdmin() {
-    const admin = aRole("admin");
-    return [
-      ["🛡️ Contrôle", [
-        ["signalements", "⚠️", "Signalements", "Plaintes à traiter"],
-        ["avis", "⭐", "Avis", "Notes des clients"],
-        ["recidivistes", "🚨", "Récidivistes", "Abus répétés"],
-        ["#scan", "📷", "Scanner une carte", "Chauffeur ou véhicule"]]],
-      ["🚖 Chauffeurs", [
-        ["chauffeurs", "🪪", "Chauffeurs", "Recherche par n° d’ordre"],
-        ["documents", "📄", "Documents", "Permis à vérifier"],
-        ["paiements", "💳", "Paiements", "Inscriptions à confirmer"],
-        ["messages", "📨", "Messages", "Questions des chauffeurs"]]],
-      ["🗂️ Gestion", [
-        ["vehicules", "🚌", "Véhicules", "QR codes et agrément"],
-        admin && ["trajets", "🛣️", "Trajets et prix", "Grille officielle"],
-        admin && ["utilisateurs", "👥", "Utilisateurs", "Comptes et accès"]].filter(Boolean)],
-      admin && ["⚙️ Paramètres et suivi", [
-        ["tableau", "📊", "Tableau de bord", "Chiffres clés"],
-        ["parametres", "⚙️", "Paramètres", "Taux, paiements, associations"],
-        ["journal", "🕘", "Journal", "Activité de l’application"]]]
-    ].filter(Boolean);
-  }
-  const NOMS_ONGLETS = Object.fromEntries([["tableau", "Tableau de bord"], ["chauffeurs", "Chauffeurs"], ["messages", "Messages"], ["paiements", "Paiements"],
-    ["avis", "Avis"], ["trajets", "Trajets et prix"], ["utilisateurs", "Utilisateurs"], ["parametres", "Paramètres"], ["journal", "Journal"],
-    ["signalements", "Signalements"], ["documents", "Documents"], ["vehicules", "Véhicules"], ["recidivistes", "Récidivistes"]]);
-
-  function htmlFamillesAdmin() {
-    return famillesAdmin().map(([titre, items]) => groupe(titre, items.map(([o, ico, t2, s]) =>
-      tuileHTML(o === "#scan" ? "#/verifier?scan=1" : "#/admin?o=" + o, ico, t2, s, o === "#scan" ? null : o)))).join("");
+  /* ---------- Page de présentation (avant connexion) ---------- */
+  function vueBienvenue() {
+    app.innerHTML = `
+      <div class="bienvenue-hero apparition">
+        <div class="splash-logo bv-logo">B</div>
+        <div class="bv-nom">TAXI BOSEMBO</div>
+        <p class="bv-slogan">Le juste prix du transport à Kinshasa</p>
+      </div>
+      <div class="card accent">
+        <h2>Payer le prix fixé par l’État, rien de plus</h2>
+        <div class="bv-point"><span>💰</span><div><b>Prix officiels</b><br><small>Consultez le prix de votre trajet avant de monter, selon la grille tarifaire de l’État.</small></div></div>
+        <div class="bv-point"><span>📷</span><div><b>Scannez le taxi</b><br><small>Le QR code collé sur le pare-brise montre si le chauffeur est identifié et en règle.</small></div></div>
+        <div class="bv-point"><span>⭐</span><div><b>Notez la course</b><br><small>Prix, trajet, conduite : votre avis aide les agents à contrôler.</small></div></div>
+        <div class="bv-point"><span>🚖</span><div><b>Chauffeurs</b><br><small>Inscrivez-vous en ligne et recevez votre numéro d’ordre et votre QR code.</small></div></div>
+      </div>
+      <a class="btn gros" href="#/compte">Se connecter</a>
+      <a class="btn jaune gros" href="#/compte?mode=inscription">Créer un compte</a>
+      <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car · conçu par ${esc(C.auteur)} · ${esc(C.contact)}</p>`;
   }
 
-  async function vueAccueil() {
-    const prenom = (etat.profil?.nom || "").split(" ")[0];
-    const r = roleVue();
-    let blocs = "";
-    if (r === "agent" || r === "admin") {
-      blocs = htmlFamillesAdmin();
-    } else if (r === "chauffeur") {
-      blocs = groupe("🚖 Mon activité", [
-        tuileHTML("#/chauffeur?s=carte", "🪪", "Ma carte", "N° d’ordre, QR, documents à imprimer", "chauffeur"),
-        tuileHTML("#/chauffeur?s=documents", "📄", "Mon permis", "Conformité et documents"),
-        tuileHTML("#/chauffeur?s=avis", "⭐", "Mes avis", "Ce que pensent les clients"),
-        tuileHTML("#/chauffeur?s=courses", "🧾", "Mes courses", "Recette du jour"),
-        tuileHTML("#/chauffeur?s=messages", "📨", "Messages", "Écrire aux agents"),
-        tuileHTML("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche (gratuit)")
-      ]) + groupe("🧭 Utile", [
-        tuileHTML("#/prix", "💰", "Prix officiels", "Grille de l’État"),
-        tuileHTML("#/chauffeur?s=vehicule", "🔑", "Mon code chauffeur", "Pour être affecté à un véhicule")
-      ]);
-    } else if (r === "proprietaire") {
-      blocs = groupe("🚌 Ma flotte", [
-        tuileHTML("#/proprietaire", "🚌", "Mes véhicules", "Recette, avis, plaintes", "proprietaire", true),
-        tuileHTML("#/proprietaire?ajout=1", "➕", "Ajouter un véhicule", "QR code créé aussitôt"),
-        tuileHTML("#/prix", "💰", "Prix officiels", "Grille de l’État")
-      ]) + groupe("📨 Contact", [tuileHTML("#/compte", "📨", "Messages aux agents", "Questions et réponses", "compte"),
-        tuileHTML("#/chauffeur?fiche=1", "🚖", "Je suis aussi chauffeur", "M’identifier")]);
+  /* ---------- Accueil (après connexion) ---------- */
+  const tuileAcc = (href, ico, titre, sous, badge) =>
+    `<a class="acc-tuile" href="${href}"${badge ? ` data-b="${badge}"` : ""}><span class="acc-ico">${ico}</span><b>${titre}</b><small>${sous}</small></a>`;
+  function vueAccueil() {
+    const p = etat.profil || {};
+    const prenom = (p.nom || "").trim().split(/\s+/)[0] || "";
+    let titre = "Mes raccourcis", tuiles = [];
+    if (aRole("agent", "admin")) {
+      titre = "Contrôle et administration";
+      tuiles = [
+        tuileAcc("#/admin?o=signalements", "⚠️", "Signalements", "Plaintes à traiter", "signalements"),
+        tuileAcc("#/admin?o=chauffeurs", "🪪", "Chauffeurs", "Recherche par n° d’ordre", "chauffeurs"),
+        tuileAcc("#/admin?o=paiements", "💳", "Paiements", "Inscriptions à confirmer", "paiements"),
+        tuileAcc("#/admin?o=documents", "📄", "Documents", "Permis à vérifier", "documents"),
+        tuileAcc("#/admin?o=messages", "✉️", "Messages", "Écrits par les chauffeurs", "messages"),
+        tuileAcc("#/admin?o=avis", "⭐", "Avis", "Notes des clients", "avis")
+      ];
+      if (aRole("admin")) tuiles.push(
+        tuileAcc("#/admin?o=tableau", "📊", "Tableau de bord", "Utilisateurs et activité"),
+        tuileAcc("#/admin?o=trajets", "🗺️", "Trajets et prix", "Grille tarifaire"));
+    } else if (aRole("chauffeur")) {
+      titre = "Mon activité";
+      tuiles = [
+        tuileAcc("#/chauffeur", "🚖", "Mon espace", "Carte, permis, affiche", "chauffeur"),
+        tuileAcc("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche"),
+        tuileAcc("#/prix", "💰", "Prix officiels", "Grille de l’État"),
+        tuileAcc("#/avis", "⭐", "Mes avis", "Mes notes de courses", "avis")
+      ];
+    } else if (aRole("proprietaire")) {
+      titre = "Ma flotte";
+      tuiles = [
+        tuileAcc("#/proprietaire", "🚌", "Mes véhicules", "Recette, avis, plaintes", "proprietaire"),
+        tuileAcc("#/prix", "💰", "Prix officiels", "Grille de l’État"),
+        tuileAcc("#/avis", "⭐", "Mes avis", "Suivi de mes plaintes", "avis"),
+        tuileAcc("#/chauffeur?fiche=1", "🚖", "Je suis chauffeur", "M’identifier en ligne")
+      ];
     } else {
-      blocs = groupe("🧭 Mes services", [
-        tuileHTML("#/prix", "💰", "Prix officiels", "Avant de monter"),
-        tuileHTML("#/avis", "⭐", "Mes avis", "Suivi de mes plaintes", "avis"),
-        tuileHTML("#/compte", "📨", "Messages", "Écrire aux agents", "compte"),
-        tuileHTML("#/chauffeur?fiche=1", "🚖", "Je suis chauffeur", "M’identifier en ligne")
-      ]);
+      tuiles = [
+        tuileAcc("#/prix", "💰", "Prix officiels", "Avant de monter"),
+        tuileAcc("#/avis", "⭐", "Mes avis", "Suivi de mes plaintes", "avis"),
+        tuileAcc("#/compte", "👤", "Mon compte", "Profil et messages", "compte"),
+        tuileAcc("#/chauffeur?fiche=1", "🚖", "Je suis chauffeur", "M’identifier en ligne")
+      ];
     }
     app.innerHTML = `
-      <div class="salut">Bonjour ${esc(prenom)} 👋</div>
-      <a class="hero-scan" href="#/verifier?scan=1"><span class="ico">📷</span>
-        <div><b>Scanner un taxi</b><span>Vérifier le chauffeur et noter la course</span></div></a>
-      ${blocs}
+      <p class="eyebrow">Accueil</p>
+      <h1>Bonjour ${esc(prenom)} 👋</h1>
+      <div class="card dark acc-scan">
+        <h2>Ce véhicule est-il en règle ?</h2>
+        <p class="muted">Scannez le QR code collé dans le véhicule avant de monter.</p>
+        <a class="btn jaune gros" href="#/verifier?scan=1">📷 Scanner un taxi</a>
+        <a class="btn ligne-claire" href="#/verifier">⌨️ Saisir un code</a>
+      </div>
+      <h3 class="acc-titre">${titre}</h3>
+      <div class="acc-grille">${tuiles.join("")}</div>
       <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car</p>`;
     afficherBadges();
-  }
-
-  // Espace chauffeur : n'affiche que la rubrique demandée (?s=…)
-  const RUBRIQUES_CHAUFFEUR = { carte: "🪪 Ma carte", documents: "📄 Mon permis et mes documents", avis: "⭐ Mes avis", courses: "🧾 Mes courses", messages: "📨 Messages aux agents", vehicule: "🔑 Mon code chauffeur" };
-  function filtrerRubriqueChauffeur() {
-    const s = params().s;
-    if (!s || !RUBRIQUES_CHAUFFEUR[s]) return;
-    const regles = [[/Mes messages aux agents/, "messages"], [/Mon code chauffeur/, "vehicule"], [/Mes documents|conforme/i, "documents"],
-      [/Avis des clients/, "avis"], [/Mes courses/, "courses"]];
-    [...app.children].forEach((el) => {
-      if (el.matches(".eyebrow, h1")) { el.remove(); return; }
-      let r = el.dataset.rub;
-      if (!r) { const txt = el.querySelector("h2, h3")?.textContent || ""; r = (regles.find(([re]) => re.test(txt)) || [])[1]; }
-      if (r !== s) el.hidden = true;
-    });
-    app.insertAdjacentHTML("afterbegin", `<a class="retour" href="#/accueil">← Accueil</a><h1>${RUBRIQUES_CHAUFFEUR[s]}</h1>`);
   }
 
   /* ---------- Vue : carte publique d'un chauffeur (scan de son QR) ---------- */
@@ -1606,7 +1588,7 @@
     app.innerHTML = `
       <p class="eyebrow">Espace chauffeur</p>
       <h1>${esc(etat.profil?.nom || "Chauffeur")}</h1>
-      <div data-rub="carte">${insc.html}</div>
+      ${insc.html}
       <div class="card ${conforme ? "dark" : "accent"}">
         <h2>${conforme ? "✔ Chauffeur conforme" : "Pas encore conforme"}</h2>
         <p class="muted">${conforme ? "Votre permis de conduire est vérifié et valide. Le badge s’affiche aux clients."
@@ -1678,7 +1660,6 @@
       </div>`;
 
     insc.apres();
-    filtrerRubriqueChauffeur();
     activerMesMessages();
     $("#copier").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(uid); toast("Code copié."); } catch (_) { toast("Sélectionnez le code pour le copier.", true); }
@@ -1883,16 +1864,14 @@
     const onglets = aRole("admin")
       ? { tableau: "Tableau de bord", chauffeurs: "Chauffeurs", messages: "Messages", paiements: "Paiements", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", parametres: "Paramètres", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
       : { chauffeurs: "Chauffeurs", messages: "Messages", paiements: "Paiements", signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
-    if (!onglets[params().o]) {
-      app.innerHTML = `<p class="eyebrow">${ROLES[roleVue()]}</p><h1>Administration</h1>${htmlFamillesAdmin()}`;
-      afficherBadges();
-      return;
-    }
-    const onglet = params().o;
+    const onglet = onglets[params().o] ? params().o : Object.keys(onglets)[0];
+
     app.innerHTML = `
-      <a class="retour" href="#/admin">← Administration</a>
-      <h1>${NOMS_ONGLETS[onglet] || onglets[onglet]}</h1>
+      <p class="eyebrow">${ROLES[etat.profil.role]}</p>
+      <h1>Contrôle et administration</h1>
+      <div class="onglets">${Object.entries(onglets).map(([k, v]) => `<button data-o="${k}" class="${k === onglet ? "actif" : ""}">${v}</button>`).join("")}</div>
       <div id="contenu"><div class="card">Chargement…</div></div>`;
+    app.querySelectorAll(".onglets button").forEach((b) => b.addEventListener("click", () => (location.hash = "#/admin?o=" + b.dataset.o)));
 
     const zone = $("#contenu");
     try {
@@ -2322,15 +2301,18 @@
   function majTabbar() {
     const bar = document.querySelector(".tabbar");
     bar.hidden = !etat.session;
+    const role = aRole("chauffeur") ? ["chauffeur", "#/chauffeur", "🚖", t("tab_chauffeur")]
+      : aRole("proprietaire") ? ["proprietaire", "#/proprietaire", "🚌", t("tab_vehicules")]
+      : aRole("agent", "admin") ? ["admin", "#/admin", "🛡️", t("tab_admin")] : null;
     const items = [
       ["accueil", "#/accueil", "🏠", t("tab_accueil")],
       ["prix", "#/prix", "💰", t("tab_prix")],
       ["verifier", "#/verifier?scan=1", "📷", t("tab_scanner"), true],
-      ["avis", "#/avis", "⭐", t("tab_avis")],
       ["compte", "#/compte", "👤", t("tab_compte")]
     ];
+    if (role) items.push(role);
     const dem = location.hash.replace(/^#\//, "").split("?")[0] || "accueil";
-    const actif = ["chauffeur", "proprietaire", "admin", "carte"].includes(dem) ? "accueil" : dem === "signaler" ? "verifier" : dem;
+    const actif = dem === "signaler" ? "verifier" : dem;
     bar.innerHTML = items.map(([tab, href, ico, lib, centre]) =>
       `<a href="${href}" data-tab="${tab}" class="${centre ? "tab-scan" : ""} ${tab === actif ? "actif" : ""}"><span class="${centre ? "rond" : ""}">${ico}</span>${lib}</a>`).join("");
     bar.querySelector(".tab-scan")?.addEventListener("click", (e) => {
@@ -2465,7 +2447,7 @@
         try { localStorage.setItem(PERSONA_KEY, sel.value); } catch (_) { /* stockage indisponible */ }
         journaliser("mode test", ROLES[sel.value]);
         toast("Vous voyez maintenant l’application comme : " + ROLES[sel.value]);
-        const cible = { chauffeur: "#/chauffeur", proprietaire: "#/proprietaire", admin: "#/admin", agent: "#/admin", client: "#/verifier" }[sel.value];
+        const cible = { chauffeur: "#/chauffeur", proprietaire: "#/proprietaire", admin: "#/admin", agent: "#/admin", client: "#/accueil" }[sel.value];
         if (location.hash === cible) route(); else location.hash = cible;
       });
       top.appendChild(sel);
@@ -2499,6 +2481,22 @@
     const st = document.createElement("style");
     st.textContent = `.pastille{display:inline-grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:99px;background:#D92D20;color:#fff;font:700 11px/1 'Public Sans',Arial,sans-serif;box-shadow:0 0 0 2px #FFFDF7}
       .tabbar a .pastille{position:absolute;top:2px;left:calc(50% + 6px)}
+      .bienvenue-hero{text-align:center;padding:18px 0 22px}
+      .bienvenue-hero .bv-logo{margin:0 auto 12px;animation:none}
+      .bv-nom{font-family:'Oswald',Arial,sans-serif;font-size:32px;font-weight:700;letter-spacing:.04em;color:var(--nuit)}
+      .bv-slogan{color:var(--ocre);font-weight:700;margin:4px 0 0}
+      .bv-point{display:flex;gap:12px;align-items:flex-start;padding:10px 0;border-top:1px solid var(--bord)}
+      .bv-point>span{font-size:26px;line-height:1;width:44px;height:44px;flex:none;display:grid;place-items:center;background:var(--sable);border-radius:12px}
+      .bv-point small{color:var(--doux)}
+      .acc-scan h2{color:var(--creme)} .acc-scan .btn{margin-top:10px}
+      .acc-titre{margin:22px 0 10px}
+      .acc-grille{display:grid;grid-template-columns:1fr 1fr;gap:12px}
+      .acc-tuile{position:relative;display:flex;flex-direction:column;gap:4px;background:var(--carte);border:1px solid var(--bord);border-top:5px solid var(--jaune);border-radius:var(--rayon);padding:14px;text-decoration:none;color:var(--nuit);min-height:118px}
+      .acc-tuile:active{transform:scale(.98)}
+      .acc-tuile .acc-ico{font-size:26px}
+      .acc-tuile b{font-family:'Oswald',Arial,sans-serif;font-weight:600;font-size:17px}
+      .acc-tuile small{color:var(--doux);font-size:13px;line-height:1.3}
+      .acc-tuile .pastille{position:absolute;top:10px;right:10px}
       .tabbar a.tab-scan .pastille{display:none}
       .onglets button .pastille{margin-left:6px;box-shadow:none}
       .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}
@@ -2581,12 +2579,12 @@
 
   const pastille = (n) => (n > 0 ? `<span class="pastille">${n > 99 ? "99+" : n}</span>` : "");
   function afficherBadges() {
-    const tb = etat.badges.tabs || {};
-    const totalRole = (tb.admin || 0) + (tb.chauffeur || 0) + (tb.proprietaire || 0);
-    etat.badges.tabs = { ...tb, accueil: totalRole };
-    document.querySelectorAll(".tuile[data-b]").forEach((el) => {
+    if (!etat.badges) return;
+    etat.badges.tabs.accueil = etat.badges.tabs.avis || 0;
+    document.querySelectorAll(".acc-tuile[data-b]").forEach((el) => {
       el.querySelector(".pastille")?.remove();
-      const n = etat.badges.onglets?.[el.dataset.b] ?? etat.badges.tabs[el.dataset.b];
+      const k = el.dataset.b;
+      const n = aRole("agent", "admin") && etat.badges.onglets[k] !== undefined ? etat.badges.onglets[k] : etat.badges.tabs[k];
       if (n > 0) el.insertAdjacentHTML("beforeend", pastille(n));
     });
     document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => {
@@ -2702,15 +2700,15 @@
   async function rafraichirEcran() {
     if (!etat.session) return;
     const demande = location.hash.replace(/^#\//, "").split("?")[0];
-    const nom = VUES[demande] ? demande : "accueil";
+    const nom = VUES[demande] && demande !== "bienvenue" ? demande : "accueil";
     const p = params();
-    if (nom === "verifier" || nom === "signaler" || nom === "compte" || (nom === "chauffeur" && p.fiche)) { afficherBadges(); return; }
+    if (nom === "verifier" || nom === "signaler" || nom === "compte" || (nom === "chauffeur" && p.fiche)) return;
     try { await VUES[nom](); } catch (_) { /* on réessaiera au prochain changement */ }
     afficherBadges();
   }
 
   /* ---------- Routeur ---------- */
-  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin, carte: vueCarte, accueil: vueAccueil };
+  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin, carte: vueCarte, accueil: vueAccueil, bienvenue: vueBienvenue };
 
   async function route() {
     fermerVerdict();
@@ -2719,15 +2717,18 @@
     const demande = location.hash.replace(/^#\//, "").split("?")[0];
     // Personne non identifiée : la première page est toujours l’identification.
     if (!etat.session && demande !== "compte") {
-      const retour = demande ? "?retour=" + encodeURIComponent(location.hash) : "";
-      location.replace("#/compte" + retour);
+      if (!demande || demande === "bienvenue" || demande === "accueil") {
+        if (demande !== "bienvenue") { location.replace("#/bienvenue"); return; }
+        document.querySelector(".tabbar").hidden = true;
+        vueBienvenue(); window.scrollTo(0, 0); return;
+      }
+      location.replace("#/compte?retour=" + encodeURIComponent(location.hash));
       return;
     }
     // Personne connectée : la première page est la vérification du QR code.
     if (etat.session && demande === "compte" && params().mode === "nouveau") { try { await vueNouveauMotDePasse(); } catch (e) { erreur(e); } return; }
-    const nom = VUES[demande] ? demande : "accueil";
-    const ongletBas = ["chauffeur", "proprietaire", "admin", "carte"].includes(nom) ? "accueil" : nom === "signaler" ? "verifier" : nom;
-    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === ongletBas));
+    const nom = VUES[demande] && demande !== "bienvenue" ? demande : "accueil";
+    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === (nom === "signaler" ? "verifier" : nom)));
     try { await VUES[nom](); } catch (e) { erreur(e); }
     afficherBadges();
     majBadges();
