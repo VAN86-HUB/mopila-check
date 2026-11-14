@@ -1,9 +1,19 @@
-/* MOPILA CHECK — application web (client, chauffeur, propriétaire, agent, admin)
+/* Taxi Bosembo (ex-MOPILA CHECK) — application web (client, chauffeur, propriétaire, agent, admin)
    Auteur : Ingénieur Van MUFWAR */
 (() => {
   "use strict";
 
   const C = window.MOPILA_CONFIG;
+  const NOM_APP = "Taxi Bosembo";
+  // Le nom est appliqué partout, même si index.html porte encore l'ancien nom
+  document.title = NOM_APP + " — Le juste prix du transport à Kinshasa";
+  (function renommerEntete() {
+    const b = document.querySelector(".brand");
+    if (!b) return;
+    const mark = b.querySelector(".brand-mark");
+    if (mark) mark.textContent = "B";
+    [...b.childNodes].forEach((n) => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " " + NOM_APP.toUpperCase(); });
+  })();
   const sb = window.supabase.createClient(C.supabaseUrl, C.supabaseKey);
   const app = document.getElementById("app");
 
@@ -115,7 +125,7 @@
       verif_eyebrow: "Contrôle du véhicule", verif_titre: "Ce véhicule est-il en règle ?",
       verif_intro: "Scannez le QR code collé dans le véhicule, ou saisissez son code.",
       scanner_qr: "📷 Scanner le QR code", code_vehicule: "Code du véhicule", ok_titre: "Véhicule en règle",
-      ko_titre: "Attention !", inconnu_titre: "Code inconnu", inconnu_txt: "Ce QR code n’est pas enregistré dans MOPILA CHECK. Soyez prudent.",
+      ko_titre: "Attention !", inconnu_titre: "Code inconnu", inconnu_txt: "Ce QR code n’est pas enregistré dans Taxi Bosembo. Soyez prudent.",
       agree: "Véhicule agréé", non_agree: "Véhicule non agréé", conforme: "Chauffeur conforme", non_conforme: "Chauffeur non conforme",
       deja_signale: "abus confirmé(s) sur ce véhicule", signaler_vehicule: "Signaler ce véhicule", fermer: "Fermer",
       voir_prix: "Voir les prix officiels",
@@ -154,7 +164,7 @@
       verif_eyebrow: "Kotala motuka", verif_titre: "Motuka oyo ezali na mibeko ?",
       verif_intro: "Scanner QR code oyo ezali na kati ya motuka, to koma code na yango.",
       scanner_qr: "📷 Scanner QR code", code_vehicule: "Code ya motuka", ok_titre: "Motuka ezali malamu",
-      ko_titre: "Keba !", inconnu_titre: "Code eyebani te", inconnu_txt: "QR code oyo ekomami na MOPILA CHECK te. Keba.",
+      ko_titre: "Keba !", inconnu_titre: "Code eyebani te", inconnu_txt: "QR code oyo ekomami na Taxi Bosembo te. Keba.",
       agree: "Motuka endimami", non_agree: "Motuka endimami te", conforme: "Shofɛ́lɛ azali na mibeko", non_conforme: "Shofɛ́lɛ azali na mibeko te",
       deja_signale: "mbeba endimami na motuka oyo", signaler_vehicule: "Funda motuka oyo", fermer: "Kokanga",
       voir_prix: "Tala ntalo ya Leta",
@@ -288,7 +298,7 @@
       ecrireLocal(REC_KEY, [x, ...lireLocal(REC_KEY, []).filter((y) => cleTrajet(y) !== cleTrajet(x))].slice(0, 5));
       const estFav = lireLocal(FAV_KEY, []).some((y) => cleTrajet(y) === cleTrajet(x));
       const lien = location.origin + location.pathname;
-      const msg = `🚖 ${t("prix_officiel")} ${lieuNom(dep)} → ${lieuNom(arr)} (${MODES[mode]}) : ${fc(tr.prix_fc)}. MOPILA CHECK : ${lien}`;
+      const msg = `🚖 ${t("prix_officiel")} ${lieuNom(dep)} → ${lieuNom(arr)} (${MODES[mode]}) : ${fc(tr.prix_fc)}. ${NOM_APP} : ${lien}`;
       r.innerHTML = `
         <div class="card dark apparition">
           <p class="muted">${esc(lieuNom(dep))} → ${esc(lieuNom(arr))} · ${MODES[mode]}</p>
@@ -340,7 +350,7 @@
     if (!$("#classement")) return;
     if (error || !data?.length) { z.innerHTML = `<h3>${t("classement")}</h3><p class="muted">${t("classement_vide")}</p>`; return; }
     const medailles = ["🥇", "🥈", "🥉", "4.", "5."];
-    const texte = `${t("classement")}\n` + data.map((c, i) => `${medailles[i]} ${c.nom} (👍 ${c.excellents} ${t("avis")})`).join("\n") + `\nMOPILA CHECK : ${location.origin + location.pathname}`;
+    const texte = `${t("classement")}\n` + data.map((c, i) => `${medailles[i]} ${c.nom} (👍 ${c.excellents} ${t("avis")})`).join("\n") + `\n${NOM_APP} : ${location.origin + location.pathname}`;
     z.innerHTML = `<h3>${t("classement")}</h3>
       <ul class="liste">${data.map((c, i) => `<li><div class="ligne-haut"><span>${medailles[i]} <b>${esc(c.nom)}</b></span><span class="badge ok">👍 ${c.excellents} / ${c.avis} ${t("avis")}</span></div></li>`).join("")}</ul>
       <a class="btn petit whatsapp" style="margin-top:10px" href="https://wa.me/?text=${encodeURIComponent(texte)}" target="_blank" rel="noopener">${t("partager_classement")}</a>`;
@@ -355,7 +365,7 @@
 
   function afficherVerdict(v, code) {
     fermerVerdict();
-    const ok = v && v.agree && v.chauffeur_conforme && v.signalements_confirmes < 2;
+    const ok = v && v.agree && v.chauffeur_conforme && v.signalements_confirmes < 2 && v.chauffeur_actif !== false;
     try { navigator.vibrate?.(ok ? 80 : [200, 100, 200]); } catch (_) { /* vibration indisponible */ }
     const d = document.createElement("div");
     d.id = "verdict";
@@ -365,7 +375,9 @@
       <div class="verdict-icone">${ok ? "✅" : "⚠️"}</div>
       <h1>${ok ? t("ok_titre") : t("ko_titre")}</h1>
       <div class="verdict-plaque">${esc(v.plaque)}</div>
-      <p>${MODES[v.mode]}${v.chauffeur_nom ? " · " + esc(v.chauffeur_nom) : ""}</p>
+      <p>${MODES[v.mode]}${v.chauffeur_nom ? " · " + esc(v.chauffeur_nom) : ""}${v.numero_ordre ? " · " + esc(v.numero_ordre) : ""}</p>
+      ${v.chauffeur_actif === false ? `<div style="background:#fff;color:#B42318;border-radius:12px;padding:12px 16px;margin:6px 0;max-width:360px;text-align:left">
+        <b>⛔ Chauffeur désactivé</b><br>Raison : ${esc(v.chauffeur_motif || "non précisée")}${v.chauffeur_jusqu ? `<br>Jusqu’au ${jourFr(v.chauffeur_jusqu)}` : ""}</div>` : ""}
       <ul class="verdict-liste">
         <li>${v.agree ? "✔" : "✖"} ${v.agree ? t("agree") : t("non_agree")}</li>
         <li>${v.chauffeur_conforme ? "✔" : "✖"} ${v.chauffeur_conforme ? t("conforme") : t("non_conforme")}</li>
@@ -397,6 +409,8 @@
       <a class="btn ligne" href="#/prix">${t("voir_prix")}</a>`;
 
     const verifier = async (code) => {
+      try { const u = new URL(code || ""); const c2 = u.searchParams.get("c"); if (c2) { location.hash = "#/carte?c=" + encodeURIComponent(c2); return; } } catch (_) { /* pas une adresse */ }
+      if (/^(TB|MC)-\d{4}-\d+$/i.test((code || "").trim())) { location.hash = "#/carte?c=" + encodeURIComponent(code.trim().toUpperCase()); return; }
       code = extraireCode(code || "");
       if (!code) return;
       $("#code").value = code;
@@ -577,6 +591,7 @@
     const p = etat.profil || {};
     const espaces = [];
     if (aRole("chauffeur")) espaces.push(`<a class="btn" href="#/chauffeur">🚖 Mon espace chauffeur</a>`);
+    else if (aRole("client", "proprietaire")) espaces.push(`<a class="btn ligne" href="#/chauffeur?fiche=1">🚖 Je suis chauffeur : m’identifier</a>`);
     if (aRole("proprietaire", "admin")) espaces.push(`<a class="btn" href="#/proprietaire">🚌 Mes véhicules</a>`);
     if (aRole("agent", "admin")) espaces.push(`<a class="btn jaune" href="#/admin">🛡️ Espace contrôle et administration</a>`);
 
@@ -594,7 +609,7 @@
       ${espaces.join("")}
       <a class="btn ligne" href="#/avis" style="margin-top:16px">⭐ ${t("tab_avis")}</a>
       <button class="btn ligne" id="sortir">Se déconnecter</button>
-      <p class="footer-note">${esc(C.appName)} · conçu par ${esc(C.auteur)} · ${esc(C.contact)}</p>`;
+      <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car · conçu par ${esc(C.auteur)} · ${esc(C.contact)}</p>`;
 
     $("#profil").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -735,11 +750,629 @@
     });
   }
 
+  /* ---------- Inscription numérique du chauffeur (à distance) ---------- */
+  const TYPE_CH = { personnel: "Chauffeur personnel", taxi: "Chauffeur de taxi" };
+  const TYPE_VEH = { voiture: "Voiture", taxi_bus: "Taxi-bus", camion: "Camion" };
+  const OPERATEURS = { airtel: "Airtel Money", mpesa: "M-Pesa", orange: "Orange Money" };
+  const lienCarte = (code) => `${location.origin}${location.pathname}?c=${encodeURIComponent(code)}`;
+  const nomComplet = (c) => [c.prenom, c.nom, c.postnom].filter(Boolean).join(" ");
+
+  function blocCotation(cot) {
+    if (!cot || !cot.nb_avis) return '<p class="muted">Pas encore d’avis de clients.</p>';
+    const ligne = (lib, pct) => {
+      const bas = pct < 50;
+      return `<div style="margin:8px 0">
+        <div style="display:flex;justify-content:space-between"><span>${lib}</span><b style="color:${bas ? "#B42318" : "#1F7A4D"}">${pct} %</b></div>
+        <div style="height:10px;border-radius:99px;background:#E2DCCB;overflow:hidden"><div style="height:100%;width:${pct}%;background:${bas ? "#D92D20" : "#1F7A4D"}"></div></div>
+        ${bas ? '<div style="color:#B42318;font-size:13px;font-weight:700;margin-top:2px">⚠️ En dessous de la moyenne (50 %)</div>' : ""}
+      </div>`;
+    };
+    return ligne("Conduite", cot.pct_conduite) + ligne("Respect du prix officiel", cot.pct_prix) + `<p class="muted">${cot.nb_avis} avis de clients</p>`;
+  }
+
+  async function chargerDossierChauffeur(uid) {
+    const [c, asso, pay, par, taux] = await Promise.all([
+      sb.from("chauffeurs").select("*").eq("id", uid).maybeSingle(),
+      sb.from("associations").select("id, nom").eq("actif", true).order("id"),
+      sb.from("paiements").select("*").eq("chauffeur_id", uid).order("cree_le", { ascending: false }).limit(1),
+      sb.from("parametres").select("cle, valeur"),
+      sb.from("taux_change").select("jour, taux_achat").order("jour", { ascending: false }).limit(1)
+    ]);
+    const parametres = Object.fromEntries((par.data || []).map((x) => [x.cle, x.valeur]));
+    return { c: c.data, associations: asso.data || [], paiement: pay.data?.[0] || null, parametres, taux: taux.data?.[0] || null };
+  }
+
+  // Formulaire d'identification
+  function formFiche(d, surFin) {
+    const c = d.c || {};
+    const v = (k, def = "") => esc(c[k] ?? def);
+    const sel = (k, val) => (c[k] === val ? "selected" : "");
+    app.innerHTML = `
+      <p class="eyebrow">Inscription chauffeur</p>
+      <h1>Mon identification</h1>
+      <p class="muted">${c.numero_ordre ? `Modification <b>gratuite</b> : votre numéro d’ordre <b>${esc(c.numero_ordre)}</b> ne change pas. Chaque modification est enregistrée dans votre historique.` : "Remplissez votre fiche depuis votre téléphone : pas besoin de vous déplacer."}</p>
+      <form class="card" id="fiche">
+        <h3>1. Identité</h3>
+        <label for="f_nom">Nom *</label><input id="f_nom" required value="${v("nom")}">
+        <label for="f_postnom">Post-nom</label><input id="f_postnom" value="${v("postnom")}">
+        <label for="f_prenom">Prénom *</label><input id="f_prenom" required value="${v("prenom")}">
+        <label for="f_sexe">Sexe</label>
+        <select id="f_sexe"><option value="M" ${c.sexe !== "F" ? "selected" : ""}>Masculin</option><option value="F" ${sel("sexe", "F")}>Féminin</option></select>
+        <div class="row">
+          <div><label for="f_tel1">Téléphone 1 *</label><input id="f_tel1" required inputmode="tel" placeholder="+243…" value="${v("telephone1", etat.profil?.telephone || "")}"></div>
+          <div><label for="f_tel2">Téléphone 2 *</label><input id="f_tel2" required inputmode="tel" placeholder="+243…" value="${v("telephone2")}"></div>
+        </div>
+
+        <h3 style="margin-top:18px">2. Permis de conduire</h3>
+        <label for="f_permis">Avez-vous un permis ?</label>
+        <select id="f_permis"><option value="non" ${c.a_permis ? "" : "selected"}>Non</option><option value="oui" ${c.a_permis ? "selected" : ""}>Oui</option></select>
+        <div id="bloc-permis" ${c.a_permis ? "" : "hidden"}>
+          <label for="f_npermis">Numéro du permis *</label><input id="f_npermis" value="${v("numero_permis")}">
+          <div class="row">
+            <div><label for="f_pdeb">Valable du *</label><input id="f_pdeb" type="date" value="${v("permis_debut")}"></div>
+            <div><label for="f_pfin">au *</label><input id="f_pfin" type="date" value="${v("permis_fin")}"></div>
+          </div>
+        </div>
+
+        <h3 style="margin-top:18px">3. Activité</h3>
+        <label for="f_asso">Association</label>
+        <select id="f_asso">${d.associations.map((a) => `<option value="${a.id}" ${c.association_id === a.id || (!c.association_id && a.nom === "Sans association") ? "selected" : ""}>${esc(a.nom)}</option>`).join("")}</select>
+        <label for="f_type">Type de chauffeur *</label>
+        <select id="f_type" required><option value="">— Choisir —</option>${Object.entries(TYPE_CH).map(([k, l]) => `<option value="${k}" ${sel("type_chauffeur", k)}>${l}</option>`).join("")}</select>
+        <label for="f_sit">Situation actuelle *</label>
+        <select id="f_sit" required><option value="">— Choisir —</option><option value="sans_vehicule" ${sel("situation", "sans_vehicule")}>Sans véhicule</option><option value="avec_vehicule" ${sel("situation", "avec_vehicule")}>Avec véhicule</option></select>
+        <div id="bloc-veh" ${c.situation === "avec_vehicule" ? "" : "hidden"}>
+          <label for="f_tveh">Type de véhicule *</label>
+          <select id="f_tveh"><option value="">— Choisir —</option>${Object.entries(TYPE_VEH).map(([k, l]) => `<option value="${k}" ${sel("type_vehicule", k)}>${l}</option>`).join("")}</select>
+        </div>
+
+        <h3 style="margin-top:18px">4. Personne à contacter en cas d’urgence</h3>
+        <label for="f_unom">Nom *</label><input id="f_unom" required value="${v("urgence_nom")}">
+        <div class="row">
+          <div><label for="f_utel">Téléphone *</label><input id="f_utel" required inputmode="tel" placeholder="+243…" value="${v("urgence_tel")}"></div>
+          <div><label for="f_ulien">Lien</label><input id="f_ulien" list="liens" placeholder="Épouse, frère…" value="${v("urgence_lien")}"></div>
+        </div>
+        <datalist id="liens"><option value="Épouse"><option value="Époux"><option value="Père"><option value="Mère"><option value="Frère"><option value="Sœur"><option value="Ami(e)"><option value="Patron"></datalist>
+        <button class="btn jaune gros" id="f_ok">${c.numero_ordre ? "Enregistrer les modifications" : c.fiche_complete ? "Enregistrer et continuer" : "Continuer vers le paiement"}</button>
+        ${c.fiche_complete ? '<a class="btn ligne" href="#/chauffeur">Annuler</a>' : ""}
+      </form>`;
+    $("#f_permis").addEventListener("change", (e) => ($("#bloc-permis").hidden = e.target.value !== "oui"));
+    $("#f_sit").addEventListener("change", (e) => ($("#bloc-veh").hidden = e.target.value !== "avec_vehicule"));
+    $("#fiche").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const b = $("#f_ok"); b.disabled = true;
+      const f = {
+        nom: $("#f_nom").value, postnom: $("#f_postnom").value, prenom: $("#f_prenom").value, sexe: $("#f_sexe").value,
+        telephone1: $("#f_tel1").value, telephone2: $("#f_tel2").value,
+        a_permis: $("#f_permis").value === "oui", numero_permis: $("#f_npermis").value, permis_debut: $("#f_pdeb").value, permis_fin: $("#f_pfin").value,
+        association_id: $("#f_asso").value, type_chauffeur: $("#f_type").value, situation: $("#f_sit").value, type_vehicule: $("#f_tveh").value,
+        urgence_nom: $("#f_unom").value, urgence_tel: $("#f_utel").value, urgence_lien: $("#f_ulien").value
+      };
+      const { error } = await sb.rpc("enregistrer_fiche_chauffeur", { f });
+      b.disabled = false;
+      if (error) return erreur(error);
+      journaliser("fiche chauffeur enregistrée");
+      await chargerProfil();
+      toast("Fiche enregistrée.");
+      surFin();
+    });
+  }
+
+  // Étape paiement
+  function htmlPaiement(d) {
+    const usd = Number(d.parametres.frais_inscription_usd || 2);
+    const p = d.paiement;
+    if (p && p.statut === "en_attente") {
+      return `<div class="card accent"><h2>⏳ Paiement en vérification</h2>
+        <p>${OPERATEURS[p.operateur]} · ${p.devise === "USD" ? p.montant + " $" : fc(p.montant)} · référence <b>${esc(p.reference_transaction)}</b></p>
+        <p class="muted">Dès que le paiement est confirmé, votre numéro d’ordre et votre carte avec QR code apparaissent ici.</p></div>`;
+    }
+    const cdf = d.taux ? Math.ceil((usd * Number(d.taux.taux_achat)) / 50) * 50 : null;
+    const marchand = (op) => d.parametres["marchand_" + op] || "[numéro à communiquer]";
+    return `
+      ${p && p.statut === "rejete" ? `<div class="card" style="border-left:6px solid #B42318"><b>Paiement précédent refusé</b><p class="muted">${esc(p.motif_rejet || "Référence introuvable.")} Vous pouvez réessayer.</p></div>` : ""}
+      <form class="card accent" id="paiement">
+        <h2>💳 Frais d’inscription : ${usd} $</h2>
+        <p class="muted">${cdf ? `Soit <b>${fc(cdf)}</b> au taux d’achat du jour (1 $ = ${fc(d.taux.taux_achat)}, le ${jourFr(d.taux.jour)}).` : "Le paiement en francs congolais sera possible dès que le taux du jour sera fixé."}</p>
+        <label for="p_op">Moyen de paiement</label>
+        <select id="p_op">${Object.entries(OPERATEURS).map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
+        <label for="p_dev">Monnaie</label>
+        <select id="p_dev"><option value="USD">Dollars : ${usd} $</option>${cdf ? `<option value="CDF">Francs congolais : ${fc(cdf)}</option>` : ""}</select>
+        <div class="officiel" id="p_consigne" style="margin-top:12px"></div>
+        <label for="p_tel">Numéro qui envoie l’argent</label><input id="p_tel" required inputmode="tel" placeholder="+243…" value="${esc(d.c?.telephone1 || "")}">
+        <label for="p_ref">Référence de la transaction (reçue par SMS)</label><input id="p_ref" required placeholder="Ex. MP241114.1234.A12345">
+        <button class="btn jaune gros" id="p_ok">J’ai payé : envoyer</button>
+      </form>
+      <a class="btn ligne" href="#/chauffeur?fiche=1">Modifier ma fiche</a>`;
+  }
+  function activerPaiement(d, surFin) {
+    const f = $("#paiement");
+    if (!f) return;
+    const usd = Number(d.parametres.frais_inscription_usd || 2);
+    const cdf = d.taux ? Math.ceil((usd * Number(d.taux.taux_achat)) / 50) * 50 : null;
+    const consigne = () => {
+      const op = $("#p_op").value, dev = $("#p_dev").value;
+      const num = d.parametres["marchand_" + op] || "[numéro à communiquer par Taxi Bosembo]";
+      $("#p_consigne").innerHTML = `Envoyez <b>${dev === "USD" ? usd + " $" : fc(cdf)}</b> par <b>${OPERATEURS[op]}</b> au numéro <b>${esc(num)}</b>, puis notez la référence reçue par SMS.`;
+    };
+    $("#p_op").addEventListener("change", consigne);
+    $("#p_dev").addEventListener("change", consigne);
+    consigne();
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const b = $("#p_ok"); b.disabled = true;
+      const { error } = await sb.rpc("declarer_paiement", { p_operateur: $("#p_op").value, p_telephone: $("#p_tel").value, p_devise: $("#p_dev").value, p_reference: $("#p_ref").value });
+      b.disabled = false;
+      if (error) return erreur(error);
+      journaliser("paiement déclaré", $("#p_op").value);
+      toast("Paiement envoyé pour vérification. Vous serez prévenu dès sa confirmation.");
+      surFin();
+    });
+  }
+
+  // Carte du chauffeur (numéro d'ordre + QR)
+  function htmlCarte(c, actif, cot) {
+    return `
+      <div class="carte-id">
+        <div class="carte-haut"><span class="brand-mark" style="width:28px;height:28px;background:#10233F;color:#F2B705">B</span><b>TAXI BOSEMBO</b><span style="margin-left:auto;font-size:12px">CARTE CHAUFFEUR</span></div>
+        <div class="carte-corps">
+          <div style="flex:1;min-width:0">
+            <div class="carte-num">${esc(c.numero_ordre)}</div>
+            <div class="carte-nom">${esc(nomComplet(c))}</div>
+            <div class="carte-ligne">${c.sexe === "F" ? "Féminin" : "Masculin"} · ${esc(TYPE_CH[c.type_chauffeur] || "")}</div>
+            <div class="carte-ligne">${esc(c.association || "")}</div>
+            <div class="carte-ligne">Permis : ${c.a_permis ? "oui" + (c.permis_fin ? " (valide jusqu’au " + jourFr(c.permis_fin) + ")" : "") : "non"}</div>
+            <div style="margin-top:8px"><span class="badge ${actif ? "ok" : "ko"}">${actif ? "Actif" : c.decede ? "Décédé" : "Désactivé"}</span></div>
+          </div>
+          <div class="qr-box" data-qr="${esc(lienCarte(c.code_identite))}"></div>
+        </div>
+      </div>`;
+  }
+  function dessinerQRs() {
+    app.querySelectorAll(".qr-box[data-qr]").forEach((el) => {
+      if (el.dataset.fait) return;
+      el.dataset.fait = "1";
+      if (window.QRCode) new QRCode(el, { text: el.dataset.qr, width: 120, height: 120 });
+      else el.textContent = el.dataset.qr;
+    });
+  }
+
+  // Section « Mon inscription » en haut de l'espace chauffeur
+  async function sectionInscription(uid) {
+    const d = await chargerDossierChauffeur(uid);
+    const c = d.c;
+    if (!c || !c.fiche_complete) {
+      return { html: `<div class="card accent"><h2>📝 Identifiez-vous</h2>
+          <p>Remplissez votre fiche et payez les frais d’inscription (${esc(d.parametres.frais_inscription_usd || 2)} $) pour obtenir votre <b>numéro d’ordre</b> et votre <b>carte avec QR code</b>, sans vous déplacer.</p>
+          <a class="btn jaune gros" href="#/chauffeur?fiche=1">Commencer mon identification</a></div>`, apres: () => {} };
+    }
+    if (!c.numero_ordre) {
+      return { html: htmlPaiement(d), apres: () => activerPaiement(d, () => route()) };
+    }
+    const { data: cot } = await sb.rpc("cotation_chauffeur", { p_chauffeur: uid });
+    const { data: act } = await sb.rpc("chauffeur_actif", { p_chauffeur: uid });
+    const asso = d.associations.find((a) => a.id === c.association_id);
+    const cc = { ...c, association: asso?.nom };
+    const msg = `Ma carte de chauffeur ${NOM_APP} : ${c.numero_ordre} (${nomComplet(c)}). Vérifiez-la ici : ${lienCarte(c.code_identite)}`;
+    return {
+      html: `${htmlCarte(cc, act !== false, cot)}
+        ${act === false ? `<div class="card" style="border-left:6px solid #B42318;margin-top:12px"><b>Compte désactivé</b><p>${esc(c.desactive_motif || "")}${c.desactive_jusqu ? ` · réactivation automatique le ${jourFr(c.desactive_jusqu)}` : ""}</p></div>` : ""}
+        <div class="row" style="margin:12px 0">
+          <a class="btn petit whatsapp" target="_blank" rel="noopener" href="https://wa.me/?text=${encodeURIComponent(msg)}">Partager ma carte</a>
+          <a class="btn petit ligne" href="#/carte?c=${encodeURIComponent(c.code_identite)}">Voir ma carte</a>
+        </div>
+        <div class="card" style="margin-bottom:12px">
+          <h3>🖨️ Mes documents à imprimer</h3>
+          <button class="btn jaune" id="affiche-pdf" type="button">🪧 Affiche pour mon véhicule</button>
+          <p class="muted" style="margin-top:6px">À imprimer et placer derrière le pare-brise : numéro d’ordre et QR code, lus par les passagers et les agents.</p>
+          <button class="btn ligne" id="fiche-pdf" type="button">📄 Ma fiche personnelle (PDF)</button>
+          <p class="muted" style="margin-top:6px">Toutes vos informations : document personnel, à garder pour vous.</p>
+        </div>
+        <div class="card"><h2>⭐ Ma cotation</h2>${blocCotation(cot)}</div>
+        <a class="btn ligne" href="#/chauffeur?fiche=1" style="margin-bottom:16px">✏️ Modifier mes informations (gratuit)</a>`,
+      apres: () => {
+        dessinerQRs();
+        $("#fiche-pdf")?.addEventListener("click", () => telechargerFichePDF().catch(erreur));
+        $("#affiche-pdf")?.addEventListener("click", () => telechargerAffichePDF(c).catch(erreur));
+      }
+    };
+  }
+
+  /* ---------- Fiche PDF du chauffeur ---------- */
+  function chargerScript(src) {
+    return new Promise((ok, ko) => {
+      if (document.querySelector(`script[src="${src}"]`)) return ok();
+      const s = document.createElement("script");
+      s.src = src; s.onload = () => ok(); s.onerror = () => ko(new Error("Impossible de charger l’outil PDF : vérifiez la connexion internet."));
+      document.head.appendChild(s);
+    });
+  }
+  const pdfTxt = (x) => String(x ?? "—").replace(/[’‘]/g, "'").replace(/[“”«»]/g, '"').replace(/…/g, "...").replace(/[^\x00-\xFF]/g, "");
+
+  async function telechargerFichePDF() {
+    const uid = etat.session.user.id;
+    toast("Préparation de votre fiche PDF…");
+    await chargerScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+    const [d, cot, act] = await Promise.all([
+      chargerDossierChauffeur(uid),
+      sb.rpc("cotation_chauffeur", { p_chauffeur: uid }).then((r) => r.data),
+      sb.rpc("chauffeur_actif", { p_chauffeur: uid }).then((r) => r.data)
+    ]);
+    const c = d.c;
+    if (!c?.numero_ordre) return erreur({ message: "La fiche PDF est disponible après la confirmation du paiement." });
+    const { data: pays } = await sb.from("paiements").select("*").eq("chauffeur_id", uid).eq("statut", "confirme").order("confirme_le", { ascending: false }).limit(1);
+    const pay = pays?.[0];
+    const asso = d.associations.find((a) => a.id === c.association_id)?.nom || "Sans association";
+
+    // QR code en image
+    const tmp = document.createElement("div");
+    tmp.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(tmp);
+    new QRCode(tmp, { text: lienCarte(c.code_identite), width: 300, height: 300 });
+    await new Promise((r) => setTimeout(r, 300));
+    const qr = tmp.querySelector("canvas")?.toDataURL("image/png") || tmp.querySelector("img")?.src;
+    tmp.remove();
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 18;
+    const nuit = [16, 35, 63], jaune = [242, 183, 5], doux = [74, 85, 104];
+    // En-tête
+    doc.setFillColor(...nuit); doc.rect(0, 0, W, 38, "F");
+    doc.setFillColor(...jaune); doc.rect(0, 38, W, 2, "F");
+    doc.setFillColor(...jaune); doc.roundedRect(M, 10, 18, 18, 3, 3, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("B", M + 9, 22.5, { align: "center" });
+    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(pdfTxt(NOM_APP), M + 24, 19);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text("Fiche d'identification du chauffeur", M + 24, 26);
+    doc.setFontSize(9); doc.text("Éditée le " + pdfTxt(new Date().toLocaleString("fr-FR")), W - M, 26, { align: "right" });
+
+    // Bloc numéro + QR
+    let y = 50;
+    doc.setTextColor(...doux); doc.setFontSize(10); doc.text("NUMÉRO D'ORDRE", M, y);
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(26); doc.text(pdfTxt(c.numero_ordre), M, y + 11);
+    doc.setFontSize(15); doc.text(pdfTxt(nomComplet(c)), M, y + 21);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+    const statut = act === false ? (c.decede ? "DÉCÉDÉ" : "DÉSACTIVÉ") : "ACTIF";
+    doc.setFillColor(...(act === false ? [180, 35, 24] : [31, 122, 77])); doc.roundedRect(M, y + 26, 28, 7, 2, 2, "F");
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(9); doc.text(statut, M + 14, y + 31, { align: "center" });
+    if (qr) { doc.addImage(qr, "PNG", W - M - 46, y - 6, 46, 46); }
+    doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    doc.text("Scannez pour vérifier", W - M - 23, y + 44, { align: "center" });
+
+    // Sections
+    y += 54;
+    const section = (titre) => {
+      if (y > 260) { doc.addPage(); y = 20; }
+      doc.setFillColor(237, 231, 214); doc.rect(M, y - 5, W - 2 * M, 8, "F");
+      doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(pdfTxt(titre), M + 3, y + 0.5);
+      y += 9;
+    };
+    const ligne = (lib, val) => {
+      if (y > 280) { doc.addPage(); y = 20; }
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(pdfTxt(lib), M + 3, y);
+      doc.setTextColor(...nuit); doc.setFont("helvetica", "bold");
+      const lignes = doc.splitTextToSize(pdfTxt(val), W - 2 * M - 62);
+      doc.text(lignes, M + 62, y);
+      y += 6.5 * Math.max(1, lignes.length);
+    };
+    section("1. Identité");
+    ligne("Nom", c.nom); ligne("Post-nom", c.postnom || "-"); ligne("Prénom", c.prenom);
+    ligne("Sexe", c.sexe === "F" ? "Féminin" : "Masculin");
+    ligne("Téléphone 1", c.telephone1); ligne("Téléphone 2", c.telephone2);
+    y += 3; section("2. Permis de conduire");
+    ligne("Permis", c.a_permis ? "Oui" : "Non");
+    if (c.a_permis) { ligne("Numéro", c.numero_permis); ligne("Validité", `du ${jourFr(c.permis_debut)} au ${jourFr(c.permis_fin)}`); }
+    y += 3; section("3. Activité");
+    ligne("Association", asso); ligne("Type de chauffeur", TYPE_CH[c.type_chauffeur]);
+    ligne("Situation", c.situation === "avec_vehicule" ? "Avec véhicule (" + (TYPE_VEH[c.type_vehicule] || "") + ")" : "Sans véhicule");
+    y += 3; section("4. Personne à contacter");
+    ligne("Nom", c.urgence_nom); ligne("Téléphone", c.urgence_tel); ligne("Lien", c.urgence_lien || "-");
+    y += 3; section("5. Inscription et paiement");
+    ligne("Inscrit le", c.inscrit_le ? dateFr(c.inscrit_le) : "-");
+    if (pay) {
+      ligne("Paiement", `${OPERATEURS[pay.operateur]} - ${pay.devise === "USD" ? pay.montant + " $" : Number(pay.montant).toLocaleString("fr-FR") + " FC"}`);
+      ligne("Référence", pay.reference_transaction); ligne("Confirmé le", pay.confirme_le ? dateFr(pay.confirme_le) : "-");
+    }
+    y += 3; section("6. Cotation des clients");
+    if (cot?.nb_avis) {
+      ligne("Conduite", cot.pct_conduite + " %" + (cot.pct_conduite < 50 ? " (en dessous de la moyenne)" : ""));
+      ligne("Respect du prix", cot.pct_prix + " %" + (cot.pct_prix < 50 ? " (en dessous de la moyenne)" : ""));
+      ligne("Nombre d'avis", String(cot.nb_avis));
+    } else ligne("Avis", "Pas encore d'avis");
+    if (act === false) { y += 3; section("Statut"); ligne("Raison", c.desactive_motif || "-"); if (c.desactive_jusqu) ligne("Jusqu'au", jourFr(c.desactive_jusqu)); }
+
+    // Pied de page
+    const n = doc.getNumberOfPages();
+    for (let i = 1; i <= n; i++) {
+      doc.setPage(i);
+      doc.setDrawColor(226, 220, 203); doc.line(M, 285, W - M, 285);
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(pdfTxt(`${NOM_APP} - Projet de Mopila Car - Document personnel et confidentiel`), M, 290);
+      doc.text(`Page ${i}/${n}`, W - M, 290, { align: "right" });
+    }
+    doc.save(`Fiche_${c.numero_ordre}.pdf`);
+    journaliser("fiche PDF téléchargée", c.numero_ordre);
+  }
+
+  /* ---------- Affiche à placer derrière le pare-brise ---------- */
+  // c : { numero_ordre, code_identite, prenom, nom, postnom }
+  async function telechargerAffichePDF(c) {
+    if (!c?.numero_ordre) return erreur({ message: "L’affiche est disponible après la confirmation du paiement." });
+    toast("Préparation de l’affiche…");
+    await chargerScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+    const tmp = document.createElement("div");
+    tmp.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(tmp);
+    new QRCode(tmp, { text: lienCarte(c.code_identite), width: 600, height: 600, correctLevel: window.QRCode?.CorrectLevel?.H });
+    await new Promise((r) => setTimeout(r, 300));
+    const qr = tmp.querySelector("canvas")?.toDataURL("image/png") || tmp.querySelector("img")?.src;
+    tmp.remove();
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, H = 297, M = 14;
+    const nuit = [16, 35, 63], jaune = [242, 183, 5];
+    // Cadre et fond
+    doc.setFillColor(...nuit); doc.rect(0, 0, W, H, "F");
+    doc.setFillColor(...jaune); doc.rect(0, 0, W, 46, "F");
+    // Logo + nom
+    doc.setFillColor(...nuit); doc.roundedRect(M, 10, 26, 26, 4, 4, "F");
+    doc.setTextColor(...jaune); doc.setFont("helvetica", "bold"); doc.setFontSize(26); doc.text("B", M + 13, 28.5, { align: "center" });
+    doc.setTextColor(...nuit); doc.setFontSize(30); doc.text("TAXI BOSEMBO", M + 32, 25);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(pdfTxt("Le juste prix du transport à Kinshasa"), M + 32, 33);
+    // Titre
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20);
+    doc.text(pdfTxt("CHAUFFEUR IDENTIFIÉ"), W / 2, 62, { align: "center" });
+    // Numéro d'ordre
+    doc.setTextColor(...jaune); doc.setFontSize(44); doc.text(pdfTxt(c.numero_ordre), W / 2, 82, { align: "center" });
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "normal"); doc.setFontSize(17);
+    doc.text(pdfTxt([c.prenom, c.nom].filter(Boolean).join(" ")), W / 2, 93, { align: "center" });
+    // QR code sur fond blanc
+    const t = 128, x = (W - t) / 2, y = 102;
+    doc.setFillColor(255, 255, 255); doc.roundedRect(x - 6, y - 6, t + 12, t + 12, 5, 5, "F");
+    if (qr) doc.addImage(qr, "PNG", x, y, t, t);
+    // Consignes
+    let yy = y + t + 18;
+    doc.setTextColor(...jaune); doc.setFont("helvetica", "bold"); doc.setFontSize(15);
+    doc.text(pdfTxt("PASSAGER : scannez avant de monter"), W / 2, yy, { align: "center" });
+    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "normal"); doc.setFontSize(11.5);
+    yy += 7;
+    doc.text(pdfTxt("Avec l’application Taxi Bosembo : vérifiez le chauffeur, connaissez le prix officiel"), W / 2, yy, { align: "center" });
+    yy += 6;
+    doc.text(pdfTxt("de l’État et notez la course (respect du prix et conduite)."), W / 2, yy, { align: "center" });
+    yy += 10;
+    doc.setDrawColor(...jaune); doc.setLineWidth(0.6); doc.line(M + 30, yy - 4, W - M - 30, yy - 4);
+    doc.setTextColor(201, 211, 227); doc.setFontSize(10.5);
+    doc.text(pdfTxt("Agents de contrôle : le même code ouvre la fiche de contrôle du chauffeur."), W / 2, yy + 2, { align: "center" });
+    // Bas de page
+    doc.setFillColor(...jaune); doc.rect(0, H - 16, W, 16, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
+    doc.text(pdfTxt(`${location.host}${location.pathname}`), M, H - 6.5);
+    doc.setFont("helvetica", "normal");
+    doc.text(pdfTxt("Affiche officielle · ne pas photocopier pour un autre chauffeur"), W - M, H - 6.5, { align: "right" });
+    doc.save(`Affiche_${c.numero_ordre}.pdf`);
+    journaliser("affiche imprimée", c.numero_ordre);
+  }
+
+  /* ---------- Vue : carte publique d'un chauffeur (scan de son QR) ---------- */
+  async function vueCarte() {
+    const code = params().c;
+    if (!code) { location.hash = "#/verifier"; return; }
+    const { data: c, error } = await sb.rpc("carte_chauffeur", { p_code: code });
+    if (error) return erreur(error);
+    if (!c) { app.innerHTML = `<div class="card accent"><h1>❓ Carte inconnue</h1><p>Ce QR code ne correspond à aucun chauffeur inscrit à Taxi Bosembo.</p></div>`; return; }
+    try { navigator.vibrate?.(c.actif ? 80 : [200, 100, 200]); } catch (_) { /* vibration indisponible */ }
+    app.innerHTML = `
+      <p class="eyebrow">Identité du chauffeur</p>
+      ${htmlCarte(c, c.actif, c.cotation)}
+      ${!c.actif ? `<div class="card apparition" style="background:#B42318;color:#fff;margin-top:12px">
+          <h2 style="color:#fff">⚠️ ${c.decede ? "Chauffeur décédé" : "Chauffeur désactivé"}</h2>
+          <p><b>Raison :</b> ${esc(c.desactive_motif || "non précisée")}</p>
+          ${c.desactive_jusqu ? `<p>Réactivation prévue le ${jourFr(c.desactive_jusqu)}.</p>` : ""}</div>` : ""}
+      <div class="card" style="margin-top:12px">
+        <p>Situation : <b>${c.situation === "avec_vehicule" ? "Avec véhicule (" + esc(TYPE_VEH[c.type_vehicule] || "") + ")" : "Sans véhicule"}</b></p>
+        <p>Documents : <span class="badge ${c.conforme ? "ok" : "att"}">${c.conforme ? "Chauffeur conforme" : "Documents incomplets"}</span></p>
+        <p class="muted">Inscrit le ${c.inscrit_le ? dateFr(c.inscrit_le) : "—"}</p>
+      </div>
+      <div class="card"><h2>⭐ Cotation des clients</h2>${blocCotation(c.cotation)}</div>
+      ${c.vehicule ? `<div class="card"><p>Véhicule conduit : <b>${esc(c.vehicule.plaque)}</b> · ${MODES[c.vehicule.mode] || ""} <span class="badge ${c.vehicule.agree ? "ok" : "att"}">${c.vehicule.agree ? "Agréé" : "Non agréé"}</span></p>
+        ${c.actif ? `<a class="btn jaune gros" href="#/signaler?v=${encodeURIComponent(c.vehicule.qr)}">⭐ ${t("noter_course")}</a>` : ""}</div>` : ""}
+      ${aRole("agent", "admin") ? `<a class="btn" href="#/admin?o=chauffeurs&n=${encodeURIComponent(c.numero_ordre)}">🛡️ Ouvrir la fiche agent</a>` : ""}`;
+    dessinerQRs();
+    journaliser("carte chauffeur consultée", c.numero_ordre);
+  }
+
+  /* ---------- Agents : chauffeurs, paiements, paramètres ---------- */
+  async function adminChauffeurs(zone) {
+    const n = params().n || "";
+    zone.innerHTML = `
+      <form class="card accent" id="rech">
+        <h2>Rechercher un chauffeur</h2>
+        <label for="r_num">Numéro d’ordre</label>
+        <div class="row"><input id="r_num" placeholder="TB-2026-000001" value="${esc(n)}" autocapitalize="characters"><button class="btn petit">Rechercher</button></div>
+        <p class="muted" style="margin-top:6px">Ou scannez la carte du chauffeur avec le bouton 📷.</p>
+      </form>
+      <div id="fiche-agent"></div>
+      <div class="card" id="derniers"><h3>Derniers chauffeurs inscrits</h3><p class="muted">…</p></div>`;
+    $("#rech").addEventListener("submit", (e) => { e.preventDefault(); location.hash = "#/admin?o=chauffeurs&n=" + encodeURIComponent($("#r_num").value.trim().toUpperCase()); });
+    const { data: dern } = await sb.from("chauffeurs").select("numero_ordre, nom, postnom, prenom, inscrit_le, actif, decede").not("numero_ordre", "is", null).order("inscrit_le", { ascending: false }).limit(20);
+    $("#derniers").innerHTML = `<h3>Derniers chauffeurs inscrits</h3><ul class="liste">${(dern || []).map((x) => `
+      <li><a href="#/admin?o=chauffeurs&n=${encodeURIComponent(x.numero_ordre)}" style="text-decoration:none;color:inherit;display:block">
+        <div class="ligne-haut"><b>${esc(x.numero_ordre)}</b><span class="badge ${x.actif && !x.decede ? "ok" : "ko"}">${x.decede ? "Décédé" : x.actif ? "Actif" : "Désactivé"}</span></div>
+        <div class="muted">${esc(nomComplet(x))} · ${dateFr(x.inscrit_le)}</div></a></li>`).join("") || '<li class="muted">Aucun chauffeur inscrit pour l’instant.</li>'}</ul>`;
+    if (n) await ficheAgent(n);
+  }
+
+  const CHAMPS_FICHE = { nom: "Nom", postnom: "Post-nom", prenom: "Prénom", sexe: "Sexe", telephone1: "Téléphone 1", telephone2: "Téléphone 2",
+    a_permis: "Permis", numero_permis: "Numéro du permis", permis_debut: "Permis valable du", permis_fin: "Permis valable au",
+    association_id: "Association", type_chauffeur: "Type de chauffeur", situation: "Situation", type_vehicule: "Type de véhicule",
+    urgence_nom: "Contact d’urgence", urgence_tel: "Téléphone du contact", urgence_lien: "Lien du contact",
+    numero_ordre: "Numéro d’ordre", actif: "Statut", desactive_motif: "Raison de désactivation", desactive_jusqu: "Désactivé jusqu’au", decede: "Décès" };
+  function valeurChamp(champ, v) {
+    if (v == null || v === "") return "(vide)";
+    if (champ === "sexe") return v === "F" ? "Féminin" : "Masculin";
+    if (champ === "a_permis") return v === "true" ? "Oui" : "Non";
+    if (champ === "actif") return v === "true" ? "Actif" : "Désactivé";
+    if (champ === "decede") return v === "true" ? "Décédé" : "Non";
+    if (champ === "type_chauffeur") return TYPE_CH[v] || v;
+    if (champ === "type_vehicule") return TYPE_VEH[v] || v;
+    if (champ === "situation") return v === "avec_vehicule" ? "Avec véhicule" : "Sans véhicule";
+    if (/^\d{4}-\d{2}-\d{2}$/.test(v)) return jourFr(v);
+    return v;
+  }
+  async function ficheAgent(num) {
+    const z = $("#fiche-agent");
+    const { data: f, error } = await sb.rpc("fiche_chauffeur_agent", { p_numero: num });
+    if (error) return erreur(error);
+    if (!f) { z.innerHTML = `<div class="card"><p>Aucun chauffeur avec le numéro <b>${esc(num)}</b>.</p></div>`; return; }
+    const auj = new Date().toISOString().slice(0, 10);
+    z.innerHTML = `
+      ${htmlCarte(f, f.actif, f.cotation)}
+      ${!f.actif ? `<div class="card" style="border-left:6px solid #B42318;margin-top:12px"><b>${f.decede ? "Décédé" : "Désactivé"}</b>
+        <p>${esc(f.desactive_motif || "")}${f.desactive_le ? " · le " + dateFr(f.desactive_le) : ""}${f.desactive_jusqu ? ` · réactivation automatique le ${jourFr(f.desactive_jusqu)}` : ""}</p></div>` : ""}
+      <div class="card" style="margin-top:12px"><h2>Informations</h2>
+        <ul class="liste">
+          <li>📞 ${esc(f.telephone1 || "—")} · ${esc(f.telephone2 || "—")}${f.email ? " · " + esc(f.email) : ""}</li>
+          <li>Permis : ${f.a_permis ? `n° <b>${esc(f.numero_permis)}</b>, du ${jourFr(f.permis_debut)} au ${jourFr(f.permis_fin)} ${f.permis_fin < auj ? '<span class="badge ko">Expiré</span>' : ""}` : "aucun"}</li>
+          <li>${esc(TYPE_CH[f.type_chauffeur] || "")} · ${esc(f.association || "")}</li>
+          <li>Situation : ${f.situation === "avec_vehicule" ? "avec véhicule (" + esc(TYPE_VEH[f.type_vehicule] || "") + ")" : "sans véhicule"}${f.vehicule ? ` · conduit <b>${esc(f.vehicule.plaque)}</b>` : ""}</li>
+          <li>Urgence : <b>${esc(f.urgence_nom || "—")}</b> (${esc(f.urgence_lien || "—")}) · 📞 ${esc(f.urgence_tel || "—")}</li>
+          <li>Documents : <span class="badge ${f.conforme ? "ok" : "att"}">${f.conforme ? "Conforme" : "Incomplets"}</span> · plaintes confirmées : <b>${f.plaintes_confirmees}</b></li>
+        </ul></div>
+      <div class="card"><h2>⭐ Cotation des clients</h2>${blocCotation(f.cotation)}
+        ${f.avis.filter((a) => a.commentaire).slice(0, 5).map((a) => `<div class="muted" style="margin-top:6px">${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)} « ${esc(a.commentaire)} »</div>`).join("")}</div>
+      <button class="btn ligne" id="affiche-agent" type="button" style="margin-bottom:12px">🪧 Imprimer l’affiche du véhicule pour ce chauffeur</button>
+      <details class="card"><summary><b>🕘 Historique des modifications (${(f.historique || []).length})</b></summary>
+        <ul class="liste" style="margin-top:8px">${(f.historique || []).map((h) => `<li>
+          <div class="ligne-haut"><b>${esc(CHAMPS_FICHE[h.champ] || h.champ)}</b><span class="muted">${dateFr(h.le)}</span></div>
+          <div class="muted">${esc(valeurChamp(h.champ, h.avant))} → <b style="color:#10233F">${esc(valeurChamp(h.champ, h.apres))}</b></div>
+          <div class="muted" style="font-size:12px">par ${h.par_lui_meme ? "le chauffeur lui-même" : esc(h.par)}</div></li>`).join("") || '<li class="muted">Aucune modification depuis l’inscription.</li>'}</ul>
+      </details>
+      <div class="card"><h2>Incidents</h2>
+        <ul class="liste">${f.incidents.map((i) => `<li><div class="ligne-haut"><b>${i.type === "deces" ? "✝ Décès" : "💥 Accident"}</b><span class="muted">${jourFr(i.date)}</span></div>
+          <div class="muted">${esc(i.lieu)}${i.etat ? " · " + esc(i.etat) : ""}</div></li>`).join("") || '<li class="muted">Aucun incident.</li>'}</ul></div>
+      ${f.decede ? "" : `
+      <details class="card"><summary><b>💥 Déclarer un accident</b></summary>
+        <form id="f_acc">
+          <div class="row"><div><label>Date *</label><input name="d" type="date" required max="${auj}"></div><div><label>Lieu *</label><input name="l" required></div></div>
+          <label>État des lieux</label><textarea name="e" placeholder="Dégâts, blessés, véhicules impliqués…"></textarea>
+          <button class="btn">Enregistrer l’accident</button></form></details>
+      <details class="card"><summary><b>✝ Déclarer un décès</b></summary>
+        <form id="f_dec">
+          <div class="row"><div><label>Date *</label><input name="d" type="date" required max="${auj}"></div><div><label>Lieu *</label><input name="l" required></div></div>
+          <p class="muted">Le chauffeur sera désactivé définitivement.</p>
+          <button class="btn">Enregistrer le décès</button></form></details>
+      ${f.actif ? `
+      <details class="card"><summary><b>⛔ Désactiver ce chauffeur</b></summary>
+        <form id="f_des">
+          <label>Raison * (visible par les clients au scan)</label>
+          <input name="m" required list="motifs" placeholder="Choisissez ou écrivez la raison">
+          <datalist id="motifs"><option value="Majoration répétée des prix"><option value="Documents expirés"><option value="Conduite dangereuse"><option value="Comportement envers les clients"><option value="Enquête en cours"><option value="Véhicule non conforme"></datalist>
+          <label>Réactivation automatique le (laisser vide pour une durée indéterminée)</label>
+          <input name="j" type="date" min="${auj}">
+          <button class="btn">Désactiver</button></form></details>`
+      : `<button class="btn jaune" id="b_react" type="button">✔ Réactiver maintenant</button>`}`}`;
+    dessinerQRs();
+    $("#affiche-agent")?.addEventListener("click", () => telechargerAffichePDF(f).catch(erreur));
+    const envoyer = async (fn, args, msg) => {
+      const { error: er } = await sb.rpc(fn, args);
+      if (er) return erreur(er);
+      journaliser(msg, f.numero_ordre);
+      toast(msg + ".");
+      ficheAgent(f.numero_ordre);
+    };
+    $("#f_acc")?.addEventListener("submit", (e) => { e.preventDefault(); const t2 = e.target; envoyer("declarer_incident", { p_numero: f.numero_ordre, p_type: "accident", p_date: t2.d.value, p_lieu: t2.l.value, p_etat: t2.e.value }, "Accident enregistré"); });
+    $("#f_dec")?.addEventListener("submit", (e) => { e.preventDefault(); if (!confirm("Confirmer le décès de ce chauffeur ?")) return; const t2 = e.target; envoyer("declarer_incident", { p_numero: f.numero_ordre, p_type: "deces", p_date: t2.d.value, p_lieu: t2.l.value }, "Décès enregistré"); });
+    $("#f_des")?.addEventListener("submit", (e) => { e.preventDefault(); const t2 = e.target; envoyer("desactiver_chauffeur", { p_numero: f.numero_ordre, p_motif: t2.m.value, p_jusqu: t2.j.value || null }, "Chauffeur désactivé"); });
+    $("#b_react")?.addEventListener("click", () => envoyer("reactiver_chauffeur", { p_numero: f.numero_ordre }, "Chauffeur réactivé"));
+  }
+
+  async function adminPaiements(zone) {
+    const { data, error } = await sb.from("paiements").select("*, chauffeurs(nom, postnom, prenom, telephone1)").order("cree_le", { ascending: false }).limit(100);
+    if (error) throw error;
+    const att = data.filter((p) => p.statut === "en_attente"), autres = data.filter((p) => p.statut !== "en_attente");
+    const ligne = (p) => `<div class="card">
+      <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(nomComplet(p.chauffeurs || {}))}</b><span class="muted">${dateFr(p.cree_le)}</span></div>
+      <p>${OPERATEURS[p.operateur]} · <b>${p.devise === "USD" ? p.montant + " $" : fc(p.montant)}</b>${p.taux ? ` (taux ${fc(p.taux)})` : ""}</p>
+      <p class="muted">Envoyé du ${esc(p.telephone)} · référence <b>${esc(p.reference_transaction || "—")}</b></p>
+      ${p.statut === "en_attente" ? `<div class="row"><button class="btn petit jaune pay-ok" data-id="${p.id}">✔ Paiement reçu</button><button class="btn petit ligne pay-ko" data-id="${p.id}">Refuser</button></div>`
+        : `<span class="badge ${p.statut === "confirme" ? "ok" : "ko"}">${p.statut === "confirme" ? "Confirmé" : "Refusé"}</span>${p.motif_rejet ? ` <span class="muted">${esc(p.motif_rejet)}</span>` : ""}`}</div>`;
+    zone.innerHTML = `<h2>À vérifier (${att.length})</h2>
+      <p class="muted">Vérifiez la référence dans votre compte ${Object.values(OPERATEURS).join(", ")} avant de confirmer. La confirmation génère le numéro d’ordre du chauffeur.</p>
+      ${att.map(ligne).join("") || '<div class="card"><p class="muted">Aucun paiement en attente.</p></div>'}
+      ${autres.length ? `<h2 style="margin-top:16px">Déjà traités</h2>${autres.slice(0, 20).map(ligne).join("")}` : ""}`;
+    zone.querySelectorAll(".pay-ok").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      const { data: num, error: er } = await sb.rpc("confirmer_paiement", { p_paiement: Number(b.dataset.id), p_valide: true });
+      if (er) { b.disabled = false; return erreur(er); }
+      journaliser("paiement confirmé", num);
+      toast(`Paiement confirmé. Numéro d’ordre : ${num}`);
+      adminPaiements(zone); majBadges();
+    }));
+    zone.querySelectorAll(".pay-ko").forEach((b) => b.addEventListener("click", async () => {
+      const motif = prompt("Raison du refus (le chauffeur la verra) :", "Référence introuvable");
+      if (motif === null) return;
+      const { error: er } = await sb.rpc("confirmer_paiement", { p_paiement: Number(b.dataset.id), p_valide: false, p_motif: motif });
+      if (er) return erreur(er);
+      toast("Paiement refusé."); adminPaiements(zone); majBadges();
+    }));
+  }
+
+  async function adminParametres(zone) {
+    const [par, taux, asso] = await Promise.all([
+      sb.from("parametres").select("cle, valeur"),
+      sb.from("taux_change").select("*").order("jour", { ascending: false }).limit(7),
+      sb.from("associations").select("*").order("id")
+    ]);
+    const P2 = Object.fromEntries((par.data || []).map((x) => [x.cle, x.valeur]));
+    const auj = new Date().toISOString().slice(0, 10);
+    zone.innerHTML = `
+      <form class="card accent" id="f_taux"><h2>💱 Taux du jour</h2>
+        <p class="muted">Taux d’achat du dollar, utilisé pour convertir les frais d’inscription en francs congolais.</p>
+        <label>1 $ = … FC (taux d’achat du ${jourFr(auj)})</label>
+        <div class="row"><input name="t" type="number" min="1" step="0.01" required value="${taux.data?.[0]?.jour === auj ? taux.data[0].taux_achat : ""}"><button class="btn petit">Enregistrer</button></div>
+        <ul class="liste" style="margin-top:8px">${(taux.data || []).map((x) => `<li class="muted">${jourFr(x.jour)} : 1 $ = ${fc(x.taux_achat)}</li>`).join("")}</ul></form>
+      <form class="card" id="f_par"><h2>💳 Paiement de l’inscription</h2>
+        <label>Frais d’inscription (en dollars)</label><input name="frais_inscription_usd" type="number" min="0" step="0.5" value="${esc(P2.frais_inscription_usd || "2")}">
+        <label>Numéro marchand Airtel Money</label><input name="marchand_airtel" inputmode="tel" value="${esc(P2.marchand_airtel || "")}">
+        <label>Numéro marchand M-Pesa</label><input name="marchand_mpesa" inputmode="tel" value="${esc(P2.marchand_mpesa || "")}">
+        <label>Numéro marchand Orange Money</label><input name="marchand_orange" inputmode="tel" value="${esc(P2.marchand_orange || "")}">
+        <button class="btn">Enregistrer</button></form>
+      <form class="card" id="f_asso"><h2>🤝 Associations de chauffeurs</h2>
+        <ul class="liste">${(asso.data || []).map((a) => `<li>${esc(a.nom)}</li>`).join("")}</ul>
+        <div class="row" style="margin-top:8px"><input name="n" required placeholder="Nom de l’association"><button class="btn petit">Ajouter</button></div></form>`;
+    $("#f_taux").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await sb.from("taux_change").upsert({ jour: auj, taux_achat: Number(e.target.t.value), saisi_par: etat.session.user.id }, { onConflict: "jour" });
+      if (error) return erreur(error);
+      journaliser("taux du jour", e.target.t.value);
+      toast("Taux du jour enregistré."); adminParametres(zone);
+    });
+    $("#f_par").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const lignes = ["frais_inscription_usd", "marchand_airtel", "marchand_mpesa", "marchand_orange"].map((k) => ({ cle: k, valeur: e.target[k].value.trim() }));
+      const { error } = await sb.from("parametres").upsert(lignes, { onConflict: "cle" });
+      if (error) return erreur(error);
+      toast("Paramètres enregistrés.");
+    });
+    $("#f_asso").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await sb.from("associations").insert({ nom: e.target.n.value.trim() });
+      if (error) return erreur(error.code === "23505" ? { message: "Cette association existe déjà." } : error);
+      toast("Association ajoutée."); adminParametres(zone);
+    });
+  }
+
   /* ---------- Vue : Chauffeur ---------- */
   async function vueChauffeur() {
     if (!etat.session) return besoinConnexion("Espace chauffeur");
-    if (!aRole("chauffeur")) { app.innerHTML = `<div class="card">Cet espace est réservé aux chauffeurs.</div>`; return; }
+    if (params().fiche) {
+      const d = await chargerDossierChauffeur(etat.session.user.id);
+      return formFiche(d, () => { if (location.hash === "#/chauffeur") route(); else location.hash = "#/chauffeur"; });
+    }
+    if (!aRole("chauffeur")) { app.innerHTML = `<div class="card">Cet espace est réservé aux chauffeurs.</div><a class="btn jaune" href="#/chauffeur?fiche=1">🚖 Je suis chauffeur : m’identifier</a>`; return; }
     const uid = etat.session.user.id;
+    const insc = await sectionInscription(uid);
     if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
     const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
     const [conf, docs, aff, courses, avis] = await Promise.all([
@@ -760,6 +1393,7 @@
     app.innerHTML = `
       <p class="eyebrow">Espace chauffeur</p>
       <h1>${esc(etat.profil?.nom || "Chauffeur")}</h1>
+      ${insc.html}
       <div class="card ${conforme ? "dark" : "accent"}">
         <h2>${conforme ? "✔ Chauffeur conforme" : "Pas encore conforme"}</h2>
         <p class="muted">${conforme ? "Vos 4 documents obligatoires sont vérifiés et valides. Le badge s’affiche aux clients." : "Il faut le permis, le contrôle technique, l’assurance et l’autorisation de transport, vérifiés par un agent et non expirés."}</p>
@@ -771,7 +1405,7 @@
         <div class="row" style="margin-top:12px">
           <button class="btn petit ligne" id="copier" type="button">📋 Copier le code</button>
           <a class="btn petit whatsapp" target="_blank" rel="noopener"
-             href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur MOPILA CHECK pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
+             href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur Taxi Bosembo pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
         </div>
         <p style="margin-top:12px">Véhicule actuel : <b>${veh ? esc(veh.plaque) + " · " + MODES[veh.mode] : "aucun"}</b></p>
       </div>
@@ -827,6 +1461,7 @@
           <div class="muted">${dateFr(c.date_heure)}</div></li>`).join("")}</ul>
       </div>`;
 
+    insc.apres();
     $("#copier").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(uid); toast("Code copié."); } catch (_) { toast("Sélectionnez le code pour le copier.", true); }
     });
@@ -1028,8 +1663,8 @@
     if (!etat.session) return besoinConnexion("Espace contrôle");
     if (!aRole("agent", "admin")) { app.innerHTML = `<div class="card">Cet espace est réservé aux agents de contrôle et aux administrateurs.</div>`; return; }
     const onglets = aRole("admin")
-      ? { tableau: "Tableau de bord", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
-      : { signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
+      ? { tableau: "Tableau de bord", chauffeurs: "Chauffeurs", paiements: "Paiements", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", parametres: "Paramètres", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
+      : { chauffeurs: "Chauffeurs", paiements: "Paiements", signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
     const onglet = onglets[params().o] ? params().o : Object.keys(onglets)[0];
 
     app.innerHTML = `
@@ -1053,6 +1688,9 @@
       else if (onglet === "utilisateurs") await adminUtilisateurs(zone);
       else if (onglet === "journal") await adminJournal(zone);
       else if (onglet === "avis") await adminAvis(zone);
+      else if (onglet === "chauffeurs") await adminChauffeurs(zone);
+      else if (onglet === "paiements") await adminPaiements(zone);
+      else if (onglet === "parametres") await adminParametres(zone);
     } catch (e) { erreur(e); }
   }
 
@@ -1069,7 +1707,7 @@
         ${s.prix_officiel_fc ? ` · écart <b>${fc(s.prix_demande_fc - s.prix_officiel_fc)}</b>` : ""}</p>
         ${s.commentaire ? `<p>« ${esc(s.commentaire)} »</p>` : ""}
         ${s.photo_url ? `<button class="btn petit ligne voir-photo" data-p="${esc(s.photo_url)}">Voir la photo</button>` : ""}
-        ${s.vehicule_id ? "" : '<p class="muted">Plaque non enregistrée dans MOPILA CHECK.</p>'}
+        ${s.vehicule_id ? "" : '<p class="muted">Plaque non enregistrée dans Taxi Bosembo.</p>'}
         <label>Note de l’agent</label><input class="note" data-id="${s.id}" value="${esc(s.note_agent || "")}">
         <div class="row">
           <button class="btn petit ligne statut" data-id="${s.id}" data-s="en_verification">En vérification</button>
@@ -1216,7 +1854,7 @@
         .f{border:6px solid #10233F;border-radius:16px;padding:24px;display:inline-block;max-width:340px}
         h1{margin:0 0 4px;font-size:28px}.b{background:#F2B705;padding:6px;border-radius:8px;font-weight:bold;margin:12px 0}
         img{width:260px;height:260px}</style></head><body><div class="f">
-        <h1>MOPILA CHECK</h1><div>Le juste prix du transport à Kinshasa</div>
+        <h1>TAXI BOSEMBO</h1><div>Le juste prix du transport à Kinshasa</div>
         <div class="b">Scannez pour vérifier ce véhicule</div><img src="${img}" alt="QR code">
         <h2>${esc(b.dataset.plaque)}</h2><div>${esc(b.dataset.mode)}</div></div>
         <script>window.onload=function(){window.print()}<\/script></body></html>`);
@@ -1453,7 +2091,7 @@
   }
 
   /* ---------- Journal ---------- */
-  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Noter une course", avis: "Mes avis", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration" };
+  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Noter une course", avis: "Mes avis", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration", carte: "Carte chauffeur" };
   function journaliser(action, detail) {
     if (!etat.session) return;
     sb.from("journal_activite").insert({ action, detail: detail ? String(detail).slice(0, 200) : null }).then(() => {}, () => {});
@@ -1645,6 +2283,14 @@
       .tabbar a.tab-scan .pastille{display:none}
       .onglets button .pastille{margin-left:6px;box-shadow:none}
       .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}
+      .carte-id{background:linear-gradient(135deg,#10233F 0%,#1B3A66 100%);color:#F6F3EA;border-radius:16px;overflow:hidden;box-shadow:0 8px 22px rgba(16,35,63,.25);margin:10px 0}
+      .carte-haut{display:flex;align-items:center;gap:8px;padding:10px 14px;background:#F2B705;color:#10233F;font-family:'Oswald',Arial,sans-serif}
+      .carte-corps{display:flex;gap:12px;padding:14px;align-items:center}
+      .carte-num{font-family:'Oswald',Arial,sans-serif;font-size:20px;font-weight:700;color:#F2B705;white-space:nowrap}
+      .carte-nom{font-family:'Oswald',Arial,sans-serif;font-size:19px;margin:2px 0 4px}
+      .carte-ligne{font-size:13px;color:#C9D3E3}
+      .carte-id .qr-box{background:#fff;padding:6px;border-radius:8px;flex:none}
+      .officiel{background:#FFF4CC;border-radius:10px;padding:10px 12px}
       .mdp-zone{position:relative}.mdp-zone input{padding-right:52px}
       .oeil{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:none;background:none;font-size:20px;cursor:pointer}`;
     document.head.appendChild(st);
@@ -1671,14 +2317,15 @@
 
       if (aRole("agent", "admin")) {
         const depuisAvis = lireVu("avis", new Date(0).toISOString());
-        const [sig, docs, veh, avis, recid] = await Promise.all([
+        const [sig, docs, veh, avis, recid, pay] = await Promise.all([
           compter("signalements", (q) => q.in("statut", ["nouveau", "en_verification"])),
           compter("documents_chauffeur", (q) => q.eq("statut", "en_attente")),
           compter("vehicules", (q) => q.eq("agree", false)),
           compter("evaluations", (q) => q.gt("date_heure", depuisAvis)),
-          sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0)
+          sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0),
+          compter("paiements", (q) => q.eq("statut", "en_attente"))
         ]);
-        Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid });
+        Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid, paiements: pay });
         if (aRole("admin")) {
           const depuisUsers = lireVu("utilisateurs", new Date(0).toISOString());
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
@@ -1720,8 +2367,111 @@
   setInterval(() => { if (document.visibilityState === "visible") majBadges(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") majBadges(); });
 
+  /* ---------- Temps réel : chaque téléphone est prévenu immédiatement ---------- */
+  // Supabase Realtime envoie chaque changement de la base (en respectant les règles de sécurité :
+  // chacun ne reçoit que ce qu'il a le droit de voir). L'écran ouvert se met à jour tout seul.
+  const TABLES_TEMPS_REEL = ["signalements", "evaluations", "paiements", "documents_chauffeur", "vehicules", "affectations",
+    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique"];
+  let canalTempsReel = null, minuterieTR = null, tablesTouchees = new Set();
+
+  function utilisateurOccupe() {
+    // Ne pas effacer ce que la personne est en train de taper ou de regarder
+    const a = document.activeElement;
+    if (a && app.contains(a) && /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName)) return true;
+    if (document.getElementById("verdict") || document.querySelector(".intro")) return true;
+    if (app.querySelector("details[open] form")) return true;
+    if (etat.scanner) return true;
+    // Un formulaire déjà commencé (même si le curseur n'y est plus)
+    for (const el of app.querySelectorAll("input, textarea")) {
+      if (el.type === "file" ? el.files?.length : el.value !== el.defaultValue) return true;
+    }
+    for (const el of app.querySelectorAll("select")) {
+      if ([...el.options].some((o) => o.selected !== o.defaultSelected)) return true;
+    }
+    return false;
+  }
+
+  function annoncerChangement(table, evt, nouv, anc) {
+    const uid = etat.session?.user?.id;
+    if (!uid || !nouv) return;
+    if (table === "paiements" && evt === "UPDATE" && nouv.chauffeur_id === uid && anc?.statut !== nouv.statut) {
+      if (nouv.statut === "confirme") toast("🎉 Paiement confirmé ! Votre carte de chauffeur est prête.");
+      if (nouv.statut === "rejete") toast("Votre paiement a été refusé : " + (nouv.motif_rejet || "voir l’espace chauffeur."), true);
+    } else if (table === "chauffeurs" && evt === "UPDATE" && nouv.id === uid && anc && anc.actif !== nouv.actif) {
+      toast(nouv.actif ? "✔ Votre compte chauffeur est réactivé." : "⛔ Votre compte chauffeur a été désactivé : " + (nouv.desactive_motif || ""), !nouv.actif);
+    } else if (table === "documents_chauffeur" && evt === "UPDATE" && nouv.chauffeur_id === uid && anc?.statut !== nouv.statut) {
+      toast(`${DOCS[nouv.type] || "Document"} : ${nouv.statut === "verifie" ? "vérifié ✔" : nouv.statut === "rejete" ? "rejeté" : "en attente"}`, nouv.statut === "rejete");
+    } else if (table === "signalements" && evt === "UPDATE" && nouv.client_id === uid && anc?.statut !== nouv.statut && ["confirme", "rejete"].includes(nouv.statut)) {
+      toast(t(nouv.statut === "confirme" ? "merci_confirme" : "sig_rejete", { p: nouv.plaque_saisie || "—" }));
+    } else if (aRole("agent", "admin") && evt === "INSERT") {
+      if (table === "signalements") toast("🔔 Nouvelle plainte reçue : " + (nouv.plaque_saisie || ""));
+      else if (table === "paiements") toast("🔔 Nouveau paiement à vérifier.");
+      else if (table === "documents_chauffeur") toast("🔔 Nouveau document à vérifier.");
+      else if (table === "profils") toast("🔔 Nouvel utilisateur inscrit.");
+    }
+  }
+
+  async function appliquerChangements() {
+    const tables = tablesTouchees; tablesTouchees = new Set();
+    if (tables.has("profils") || tables.has("chauffeurs")) { await chargerProfil(); majTabbar(); }
+    if (tables.has("tarifs") || tables.has("lieux") || tables.has("arretes")) await chargerGrille();
+    majBadges();
+    if (utilisateurOccupe()) { tablesTouchees = new Set([...tables, ...tablesTouchees]); minuterieTR = setTimeout(appliquerChangements, 4000); return; }
+    const y = window.scrollY;
+    await rafraichirEcran();
+    window.scrollTo(0, y);
+  }
+
+  function demarrerTempsReel() {
+    arreterTempsReel();
+    if (!etat.session) return;
+    try { sb.realtime.setAuth(etat.session.access_token); } catch (_) { /* version de la librairie sans setAuth */ }
+    canalTempsReel = sb.channel("mopila-" + etat.session.user.id);
+    TABLES_TEMPS_REEL.forEach((table) => {
+      canalTempsReel.on("postgres_changes", { event: "*", schema: "public", table }, (p) => {
+        annoncerChangement(table, p.eventType, p.new, p.old);
+        tablesTouchees.add(table);
+        clearTimeout(minuterieTR);
+        minuterieTR = setTimeout(appliquerChangements, 600);
+      });
+    });
+    if (!document.getElementById("direct")) {
+      const s = document.createElement("span");
+      s.id = "direct"; s.hidden = true; s.title = "Mises à jour en direct";
+      s.style.cssText = "width:9px;height:9px;border-radius:50%;background:#22C55E;box-shadow:0 0 0 3px rgba(34,197,94,.25);flex:none;margin-left:6px";
+      document.querySelector(".brand")?.appendChild(s);
+    }
+    canalTempsReel.subscribe((statut) => {
+      const pastille = document.getElementById("direct");
+      if (pastille) pastille.hidden = statut !== "SUBSCRIBED";
+    });
+  }
+  // Au retour sur l'application (téléphone sorti de veille), on se reconnecte et on rafraîchit
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState !== "visible" || !etat.session) return;
+    if (!canalTempsReel || canalTempsReel.state !== "joined") demarrerTempsReel();
+    TABLES_TEMPS_REEL.forEach((x) => tablesTouchees.add(x));
+    clearTimeout(minuterieTR); minuterieTR = setTimeout(appliquerChangements, 300);
+  });
+  window.addEventListener("online", () => { if (etat.session) demarrerTempsReel(); });
+  function arreterTempsReel() {
+    if (canalTempsReel) { try { sb.removeChannel(canalTempsReel); } catch (_) { /* déjà fermé */ } canalTempsReel = null; }
+    const p = document.getElementById("direct"); if (p) p.hidden = true;
+  }
+
+  // Redessine l'écran ouvert avec les nouvelles données, sans changer de page
+  async function rafraichirEcran() {
+    if (!etat.session) return;
+    const demande = location.hash.replace(/^#\//, "").split("?")[0];
+    const nom = VUES[demande] ? demande : "verifier";
+    const p = params();
+    if (nom === "verifier" || nom === "signaler" || nom === "compte" || (nom === "chauffeur" && p.fiche)) return;
+    try { await VUES[nom](); } catch (_) { /* on réessaiera au prochain changement */ }
+    afficherBadges();
+  }
+
   /* ---------- Routeur ---------- */
-  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin };
+  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin, carte: vueCarte };
 
   async function route() {
     fermerVerdict();
@@ -1749,19 +2499,26 @@
 
   async function demarrer() {
     // Un QR code scanné avec l’appareil photo ouvre l’adresse ?v=CODE
-    const v = new URLSearchParams(location.search).get("v");
+    const qs = new URLSearchParams(location.search);
+    const v = qs.get("v"), cc = qs.get("c");
     if (v) { history.replaceState(null, "", location.pathname + "#/verifier?v=" + encodeURIComponent(v)); }
+    else if (cc) { history.replaceState(null, "", location.pathname + "#/carte?c=" + encodeURIComponent(cc)); }
     majReseau();
     window.addEventListener("online", () => { majReseau(); chargerGrille(); });
     window.addEventListener("offline", majReseau);
-    app.innerHTML = `<div class="splash"><div class="splash-logo">M</div><div class="splash-nom">MOPILA CHECK</div><div class="muted">Le juste prix du transport à Kinshasa</div></div>`;
+    app.innerHTML = `<div class="splash"><div class="splash-logo">B</div><div class="splash-nom">TAXI BOSEMBO</div><div class="muted">Le juste prix du transport à Kinshasa</div></div>`;
     await Promise.all([chargerGrille(), chargerProfil(), new Promise((r) => setTimeout(r, 900))]);
     await montrerIntro();
     sb.auth.onAuthStateChange(async (evt) => {
       if (evt === "PASSWORD_RECOVERY") { await chargerProfil(); location.hash = "#/compte?mode=nouveau"; return; }
-      if (evt === "SIGNED_IN" || evt === "SIGNED_OUT") { await chargerProfil(); majTabbar(); if (evt === "SIGNED_OUT") route(); }
+      if (evt === "TOKEN_REFRESHED") { const { data } = await sb.auth.getSession(); if (data.session) { etat.session = data.session; try { sb.realtime.setAuth(data.session.access_token); } catch (_) { /* rien */ } } }
+      if (evt === "SIGNED_IN" || evt === "SIGNED_OUT") {
+        await chargerProfil(); majTabbar();
+        if (evt === "SIGNED_IN") demarrerTempsReel(); else { arreterTempsReel(); route(); }
+      }
     });
     window.addEventListener("hashchange", route);
+    demarrerTempsReel();
     if (RETOUR_RECUPERATION && etat.session) location.replace("#/compte?mode=nouveau");
     route();
     verifierNouvelles();
