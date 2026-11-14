@@ -60,7 +60,7 @@
   ];
   function erreur(e) {
     console.error(e);
-    const m = e?.message || "";
+    const m = (e?.message || "").replace(/^PERMIS_EN_DOUBLE:\s*/, "");
     const fr = ERREURS_FR.find(([re]) => re.test(m));
     toast(fr ? fr[1] : m || "Une erreur est survenue.", true);
   }
@@ -111,7 +111,7 @@
       merci_mediocre: "La majoration a été transmise aux agents de contrôle. Vous serez informé de la suite.",
       mes_avis_titre: "Mes avis sur les courses", suivi_signalement: "Suivi du contrôle", aucun_avis: "Vous n’avez encore noté aucune course.",
       avis: "avis", avis_prix: "prix respecté", avis_chauffeur: "chauffeur apprécié",
-      tab_prix: "Prix", tab_signaler: "Signaler", tab_scanner: "Scanner", tab_compte: "Compte",
+      tab_accueil: "Accueil", tab_prix: "Prix", tab_signaler: "Signaler", tab_scanner: "Scanner", tab_compte: "Compte",
       tab_chauffeur: "Chauffeur", tab_vehicules: "Véhicules", tab_admin: "Admin",
       prix_eyebrow: "Grille tarifaire officielle", prix_titre: "Quel est le bon prix ?",
       prix_intro: "Tapez votre départ et votre arrivée : le tarif officiel s’affiche, même sans connexion.",
@@ -150,7 +150,7 @@
       merci_mediocre: "Ntalo oyo babakisaki etindami epai ya ba agents. Okoyebisama nsima.",
       mes_avis_titre: "Makanisi na ngai na mibembo", suivi_signalement: "Bolandi ya contrôle", aucun_avis: "Opesi naino likanisi te.",
       avis: "makanisi", avis_prix: "ntalo etosamaki", avis_chauffeur: "shofɛ́lɛ alingami",
-      tab_prix: "Ntalo", tab_signaler: "Kofunda", tab_scanner: "Scanner", tab_compte: "Ngai",
+      tab_accueil: "Ndako", tab_prix: "Ntalo", tab_signaler: "Kofunda", tab_scanner: "Scanner", tab_compte: "Ngai",
       tab_chauffeur: "Shofɛ́lɛ", tab_vehicules: "Mituka", tab_admin: "Admin",
       prix_eyebrow: "Ntalo ya Leta", prix_titre: "Ntalo ya solo ezali boni ?",
       prix_intro: "Koma esika okolongwa mpe esika okokende : ntalo ya Leta ekobima, ata soki internet ezali te.",
@@ -608,6 +608,7 @@
       </div>
       ${espaces.join("")}
       <a class="btn ligne" href="#/avis" style="margin-top:16px">⭐ ${t("tab_avis")}</a>
+      ${aRole("agent", "admin") || aRole("chauffeur") ? "" : await htmlMesMessages()}
       <button class="btn ligne" id="sortir">Se déconnecter</button>
       <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car · conçu par ${esc(C.auteur)} · ${esc(C.contact)}</p>`;
 
@@ -617,6 +618,7 @@
       if (error) return erreur(error);
       await chargerProfil(); toast("Profil enregistré.");
     });
+    activerMesMessages();
     $("#sortir").addEventListener("click", async () => { await sb.auth.signOut(); location.hash = "#/prix"; });
   }
 
@@ -695,7 +697,7 @@
         await chargerProfil();
         journaliser(inscription ? "inscription" : "connexion");
         verifierNouvelles();
-        const cible = p.retour ? decodeURIComponent(p.retour) : "#/verifier";
+        const cible = p.retour ? decodeURIComponent(p.retour) : "#/accueil";
         if (location.hash === cible) route(); else location.hash = cible;
       } catch (err) { erreur(err); } finally { b.disabled = false; }
     });
@@ -779,7 +781,11 @@
       sb.from("taux_change").select("jour, taux_achat").order("jour", { ascending: false }).limit(1)
     ]);
     const parametres = Object.fromEntries((par.data || []).map((x) => [x.cle, x.valeur]));
-    return { c: c.data, associations: asso.data || [], paiement: pay.data?.[0] || null, parametres, taux: taux.data?.[0] || null };
+    const { data: dp } = await sb.rpc("dernier_permis", { p_chauffeur: uid });
+    const permis = dp?.[0] || null;
+    const auj = new Date().toISOString().slice(0, 10);
+    const verrou = !!permis && permis.statut === "verifie" && permis.date_expiration >= auj;
+    return { c: c.data, associations: asso.data || [], paiement: pay.data?.[0] || null, parametres, taux: taux.data?.[0] || null, permis, verrou };
   }
 
   // Formulaire d'identification
@@ -804,14 +810,19 @@
         </div>
 
         <h3 style="margin-top:18px">2. Permis de conduire</h3>
+        ${d.verrou ? `<div class="officiel">🔒 <b>Permis n° ${esc(d.permis.numero)} vérifié</b> (valable jusqu’au ${jourFr(d.permis.date_expiration)}).
+            Il ne peut plus être modifié, sauf s’il est rejeté ou expiré.</div>`
+          : d.permis?.statut === "rejete" ? `<div class="officiel" style="background:#FDE3E1">❌ Votre permis n° ${esc(d.permis.numero || "")} a été <b>rejeté</b>. Corrigez-le ci-dessous : il repartira en vérification.</div>`
+          : d.permis?.statut === "en_attente" ? `<div class="officiel">⏳ Permis n° ${esc(d.permis.numero || "")} en cours de vérification par un agent.</div>` : ""}
         <label for="f_permis">Avez-vous un permis ?</label>
-        <select id="f_permis"><option value="non" ${c.a_permis ? "" : "selected"}>Non</option><option value="oui" ${c.a_permis ? "selected" : ""}>Oui</option></select>
-        <div id="bloc-permis" ${c.a_permis ? "" : "hidden"}>
-          <label for="f_npermis">Numéro du permis *</label><input id="f_npermis" value="${v("numero_permis")}">
+        <select id="f_permis" ${d.verrou ? "disabled" : ""}><option value="non" ${c.a_permis || d.verrou ? "" : "selected"}>Non</option><option value="oui" ${c.a_permis || d.verrou ? "selected" : ""}>Oui</option></select>
+        <div id="bloc-permis" ${c.a_permis || d.verrou ? "" : "hidden"}>
+          <label for="f_npermis">Numéro du permis *</label><input id="f_npermis" value="${d.verrou ? esc(d.permis.numero) : v("numero_permis")}" ${d.verrou ? "readonly" : ""}>
           <div class="row">
-            <div><label for="f_pdeb">Valable du *</label><input id="f_pdeb" type="date" value="${v("permis_debut")}"></div>
-            <div><label for="f_pfin">au *</label><input id="f_pfin" type="date" value="${v("permis_fin")}"></div>
+            <div><label for="f_pdeb">Valable du *</label><input id="f_pdeb" type="date" value="${v("permis_debut")}" ${d.verrou && c.permis_debut ? "readonly" : ""}></div>
+            <div><label for="f_pfin">au *</label><input id="f_pfin" type="date" value="${d.verrou ? esc(d.permis.date_expiration) : v("permis_fin")}" ${d.verrou ? "readonly" : ""}></div>
           </div>
+          ${d.verrou ? "" : '<p class="muted" style="margin-top:6px">Votre permis sera envoyé à un agent pour vérification. Il vous rend <b>conforme</b> une fois vérifié.</p>'}
         </div>
 
         <h3 style="margin-top:18px">3. Activité</h3>
@@ -844,13 +855,13 @@
       const f = {
         nom: $("#f_nom").value, postnom: $("#f_postnom").value, prenom: $("#f_prenom").value, sexe: $("#f_sexe").value,
         telephone1: $("#f_tel1").value, telephone2: $("#f_tel2").value,
-        a_permis: $("#f_permis").value === "oui", numero_permis: $("#f_npermis").value, permis_debut: $("#f_pdeb").value, permis_fin: $("#f_pfin").value,
+        a_permis: d.verrou || $("#f_permis").value === "oui", numero_permis: $("#f_npermis").value, permis_debut: $("#f_pdeb").value, permis_fin: $("#f_pfin").value,
         association_id: $("#f_asso").value, type_chauffeur: $("#f_type").value, situation: $("#f_sit").value, type_vehicule: $("#f_tveh").value,
         urgence_nom: $("#f_unom").value, urgence_tel: $("#f_utel").value, urgence_lien: $("#f_ulien").value
       };
       const { error } = await sb.rpc("enregistrer_fiche_chauffeur", { f });
       b.disabled = false;
-      if (error) return erreur(error);
+      if (error) { if (!gererErreurPermis(error, f.numero_permis)) erreur(error); return; }
       journaliser("fiche chauffeur enregistrée");
       await chargerProfil();
       toast("Fiche enregistrée.");
@@ -1154,6 +1165,206 @@
     journaliser("affiche imprimée", c.numero_ordre);
   }
 
+  /* ---------- Messages aux agents (permis en double, autres questions) ---------- */
+  function fenetreMessageAgents({ sujet = "autre", numero = null, titre, texte }) {
+    document.getElementById("fenetre-msg")?.remove();
+    const d = document.createElement("div");
+    d.id = "fenetre-msg";
+    d.style.cssText = "position:fixed;inset:0;z-index:55;background:rgba(16,35,63,.65);display:flex;align-items:flex-end;justify-content:center";
+    d.innerHTML = `
+      <form class="card apparition" style="width:100%;max-width:560px;margin:0;border-radius:18px 18px 0 0;max-height:92vh;overflow:auto">
+        <h2>${titre}</h2>
+        ${texte ? `<div class="officiel" style="${sujet === "permis_en_double" ? "background:#FDE3E1" : ""}">${texte}</div>` : ""}
+        <label for="m_txt">Votre message aux agents</label>
+        <textarea id="m_txt" required minlength="5" maxlength="1000" placeholder="${sujet === "permis_en_double"
+          ? "Ex. : ce permis est bien le mien, je peux présenter l’original. Je suis joignable au +243…"
+          : "Écrivez votre question ou votre problème…"}"></textarea>
+        <button class="btn jaune gros" id="m_ok">📨 Envoyer aux agents</button>
+        <button class="btn ligne" type="button" id="m_annuler">Fermer</button>
+      </form>`;
+    document.body.appendChild(d);
+    const fermer = () => d.remove();
+    d.querySelector("#m_annuler").addEventListener("click", fermer);
+    d.querySelector("form").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const b = d.querySelector("#m_ok"); b.disabled = true;
+      const { error } = await sb.from("messages_agents").insert({ sujet, numero_permis: numero, message: d.querySelector("#m_txt").value.trim() });
+      b.disabled = false;
+      if (error) return erreur(error);
+      journaliser("message aux agents", sujet);
+      d.querySelector("form").innerHTML = `<div style="text-align:center"><div style="font-size:56px">📨</div><h2>Message envoyé</h2>
+        <p class="muted">Un agent va l’examiner. Sa réponse s’affichera dans votre espace (rubrique « Mes messages aux agents »).</p>
+        <button class="btn" type="button" id="m_fin">D’accord</button></div>`;
+      d.querySelector("#m_fin").addEventListener("click", () => { fermer(); rafraichirEcran(); });
+    });
+  }
+
+  // Erreur « permis déjà enregistré » : message clair + possibilité d'écrire aux agents
+  function gererErreurPermis(error, numero) {
+    const m = error?.message || "";
+    if (!m.includes("PERMIS_EN_DOUBLE")) return false;
+    fenetreMessageAgents({
+      sujet: "permis_en_double", numero,
+      titre: "⚠️ Permis déjà enregistré",
+      texte: `Le permis n° <b>${esc(numero || "")}</b> est déjà enregistré pour un autre chauffeur. <b>La validation a été refusée.</b><br>
+        Vérifiez le numéro saisi. Si c’est bien votre permis, expliquez votre situation aux agents : ils vérifieront.`
+    });
+    return true;
+  }
+
+  async function htmlMesMessages() {
+    if (!etat.session) return "";
+    const { data } = await sb.from("messages_agents").select("*").eq("auteur_id", etat.session.user.id).order("cree_le", { ascending: false }).limit(20);
+    const liste = data || [];
+    const reponses = liste.filter((m) => m.reponse).map((m) => m.id);
+    marquerVu("reponses", reponses);
+    return `<div class="card" id="mes-messages">
+      <h2>📨 Mes messages aux agents</h2>
+      ${liste.length ? `<ul class="liste">${liste.map((m) => `<li>
+        <div class="ligne-haut"><b>${m.sujet === "permis_en_double" ? "Permis déjà enregistré" + (m.numero_permis ? " (" + esc(m.numero_permis) + ")" : "") : "Question"}</b>
+          <span class="badge ${m.statut === "traite" ? "ok" : "att"}">${m.statut === "traite" ? "Répondu" : "En attente"}</span></div>
+        <div class="muted">« ${esc(m.message)} » · ${dateFr(m.cree_le)}</div>
+        ${m.reponse ? `<div class="officiel" style="margin-top:6px"><b>Réponse de l’agent :</b> ${esc(m.reponse)}</div>` : ""}</li>`).join("")}</ul>`
+        : '<p class="muted">Aucun message pour l’instant.</p>'}
+      <button class="btn ligne" type="button" id="ecrire-agents">✏️ Écrire aux agents</button>
+    </div>`;
+  }
+  function activerMesMessages() {
+    $("#ecrire-agents")?.addEventListener("click", () => fenetreMessageAgents({ titre: "Écrire aux agents" }));
+  }
+
+  async function adminMessages(zone) {
+    const { data, error } = await sb.from("messages_agents")
+      .select("*, auteur:profils!messages_agents_auteur_id_fkey(nom, telephone, role)").order("statut").order("cree_le", { ascending: false }).limit(100);
+    if (error) throw error;
+    const ouverts = data.filter((m) => m.statut === "ouvert"), traites = data.filter((m) => m.statut !== "ouvert");
+    const carte = (m) => `<div class="card" data-id="${m.id}">
+      <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(m.auteur?.nom || "Utilisateur")}</b><span class="muted">${dateFr(m.cree_le)}</span></div>
+      <p class="muted">${esc(ROLES[m.auteur?.role] || "")}${m.auteur?.telephone ? " · 📞 " + esc(m.auteur.telephone) : ""}</p>
+      ${m.sujet === "permis_en_double" ? `<p><span class="badge ko">Permis déjà enregistré</span> n° <b>${esc(m.numero_permis || "")}</b>
+        <button class="btn petit ligne detenteurs" type="button" data-n="${esc(m.numero_permis || "")}" style="margin-left:6px">Qui a ce permis ?</button></p>
+        <div class="zone-det"></div>` : ""}
+      <p>« ${esc(m.message)} »</p>
+      ${m.statut === "ouvert" ? `<label>Réponse</label><textarea class="rep" placeholder="Votre réponse au chauffeur…"></textarea>
+        <button class="btn jaune repondre" type="button">Répondre et clore</button>`
+        : `<div class="officiel"><b>Réponse :</b> ${esc(m.reponse || "—")} <span class="muted">· ${m.traite_le ? dateFr(m.traite_le) : ""}</span></div>`}
+    </div>`;
+    zone.innerHTML = `<h2>À traiter (${ouverts.length})</h2>${ouverts.map(carte).join("") || '<div class="card"><p class="muted">Aucun message en attente.</p></div>'}
+      ${traites.length ? `<h2 style="margin-top:16px">Déjà traités</h2>${traites.slice(0, 20).map(carte).join("")}` : ""}`;
+    zone.querySelectorAll(".detenteurs").forEach((b) => b.addEventListener("click", async () => {
+      const z = b.closest(".card").querySelector(".zone-det");
+      const { data: dt, error: er } = await sb.rpc("detenteurs_permis", { p_numero: b.dataset.n });
+      if (er) return erreur(er);
+      z.innerHTML = `<ul class="liste">${(dt || []).map((x) => `<li>${x.numero_ordre ? `<a href="#/admin?o=chauffeurs&n=${encodeURIComponent(x.numero_ordre)}"><b>${esc(x.numero_ordre)}</b></a>` : "<b>Sans numéro d’ordre</b>"} · ${esc(x.nom || "—")}
+        <span class="badge ${x.statut_permis === "verifie" ? "ok" : x.statut_permis === "rejete" ? "ko" : "att"}">${x.statut_permis === "verifie" ? "Vérifié" : x.statut_permis === "rejete" ? "Rejeté" : x.statut_permis === "en_attente" ? "En attente" : "Dans la fiche"}</span></li>`).join("") || '<li class="muted">Plus aucun chauffeur avec ce permis : le demandeur peut réessayer.</li>'}</ul>`;
+    }));
+    zone.querySelectorAll(".repondre").forEach((b) => b.addEventListener("click", async () => {
+      const c = b.closest(".card"), rep = c.querySelector(".rep").value.trim();
+      if (rep.length < 2) return erreur({ message: "Écrivez une réponse." });
+      const { error: er } = await sb.from("messages_agents").update({ statut: "traite", reponse: rep, traite_par: etat.session.user.id, traite_le: new Date().toISOString() }).eq("id", c.dataset.id);
+      if (er) return erreur(er);
+      journaliser("réponse à un message", c.dataset.id);
+      toast("Réponse envoyée."); adminMessages(zone); majBadges();
+    }));
+  }
+
+  /* ---------- Accueil : chaque rôle a ses rubriques bien rangées ---------- */
+  const tuileHTML = (href, ico, titre, sous, badge, large) =>
+    `<a class="tuile${large ? " large" : ""}" href="${href}" ${badge ? `data-b="${badge}"` : ""}>
+      <span class="ico">${ico}</span><div><b>${titre}</b>${sous ? `<br><small>${sous}</small>` : ""}</div></a>`;
+  const groupe = (titre, tuiles) => `<div class="groupe-titre">${titre}</div><div class="tuiles">${tuiles.join("")}</div>`;
+
+  // Rubriques de l'administration, rangées en 4 familles
+  function famillesAdmin() {
+    const admin = aRole("admin");
+    return [
+      ["🛡️ Contrôle", [
+        ["signalements", "⚠️", "Signalements", "Plaintes à traiter"],
+        ["avis", "⭐", "Avis", "Notes des clients"],
+        ["recidivistes", "🚨", "Récidivistes", "Abus répétés"],
+        ["#scan", "📷", "Scanner une carte", "Chauffeur ou véhicule"]]],
+      ["🚖 Chauffeurs", [
+        ["chauffeurs", "🪪", "Chauffeurs", "Recherche par n° d’ordre"],
+        ["documents", "📄", "Documents", "Permis à vérifier"],
+        ["paiements", "💳", "Paiements", "Inscriptions à confirmer"],
+        ["messages", "📨", "Messages", "Questions des chauffeurs"]]],
+      ["🗂️ Gestion", [
+        ["vehicules", "🚌", "Véhicules", "QR codes et agrément"],
+        admin && ["trajets", "🛣️", "Trajets et prix", "Grille officielle"],
+        admin && ["utilisateurs", "👥", "Utilisateurs", "Comptes et accès"]].filter(Boolean)],
+      admin && ["⚙️ Paramètres et suivi", [
+        ["tableau", "📊", "Tableau de bord", "Chiffres clés"],
+        ["parametres", "⚙️", "Paramètres", "Taux, paiements, associations"],
+        ["journal", "🕘", "Journal", "Activité de l’application"]]]
+    ].filter(Boolean);
+  }
+  const NOMS_ONGLETS = Object.fromEntries([["tableau", "Tableau de bord"], ["chauffeurs", "Chauffeurs"], ["messages", "Messages"], ["paiements", "Paiements"],
+    ["avis", "Avis"], ["trajets", "Trajets et prix"], ["utilisateurs", "Utilisateurs"], ["parametres", "Paramètres"], ["journal", "Journal"],
+    ["signalements", "Signalements"], ["documents", "Documents"], ["vehicules", "Véhicules"], ["recidivistes", "Récidivistes"]]);
+
+  function htmlFamillesAdmin() {
+    return famillesAdmin().map(([titre, items]) => groupe(titre, items.map(([o, ico, t2, s]) =>
+      tuileHTML(o === "#scan" ? "#/verifier?scan=1" : "#/admin?o=" + o, ico, t2, s, o === "#scan" ? null : o)))).join("");
+  }
+
+  async function vueAccueil() {
+    const prenom = (etat.profil?.nom || "").split(" ")[0];
+    const r = roleVue();
+    let blocs = "";
+    if (r === "agent" || r === "admin") {
+      blocs = htmlFamillesAdmin();
+    } else if (r === "chauffeur") {
+      blocs = groupe("🚖 Mon activité", [
+        tuileHTML("#/chauffeur?s=carte", "🪪", "Ma carte", "N° d’ordre, QR, documents à imprimer", "chauffeur"),
+        tuileHTML("#/chauffeur?s=documents", "📄", "Mon permis", "Conformité et documents"),
+        tuileHTML("#/chauffeur?s=avis", "⭐", "Mes avis", "Ce que pensent les clients"),
+        tuileHTML("#/chauffeur?s=courses", "🧾", "Mes courses", "Recette du jour"),
+        tuileHTML("#/chauffeur?s=messages", "📨", "Messages", "Écrire aux agents"),
+        tuileHTML("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche (gratuit)")
+      ]) + groupe("🧭 Utile", [
+        tuileHTML("#/prix", "💰", "Prix officiels", "Grille de l’État"),
+        tuileHTML("#/chauffeur?s=vehicule", "🔑", "Mon code chauffeur", "Pour être affecté à un véhicule")
+      ]);
+    } else if (r === "proprietaire") {
+      blocs = groupe("🚌 Ma flotte", [
+        tuileHTML("#/proprietaire", "🚌", "Mes véhicules", "Recette, avis, plaintes", "proprietaire", true),
+        tuileHTML("#/proprietaire?ajout=1", "➕", "Ajouter un véhicule", "QR code créé aussitôt"),
+        tuileHTML("#/prix", "💰", "Prix officiels", "Grille de l’État")
+      ]) + groupe("📨 Contact", [tuileHTML("#/compte", "📨", "Messages aux agents", "Questions et réponses", "compte"),
+        tuileHTML("#/chauffeur?fiche=1", "🚖", "Je suis aussi chauffeur", "M’identifier")]);
+    } else {
+      blocs = groupe("🧭 Mes services", [
+        tuileHTML("#/prix", "💰", "Prix officiels", "Avant de monter"),
+        tuileHTML("#/avis", "⭐", "Mes avis", "Suivi de mes plaintes", "avis"),
+        tuileHTML("#/compte", "📨", "Messages", "Écrire aux agents", "compte"),
+        tuileHTML("#/chauffeur?fiche=1", "🚖", "Je suis chauffeur", "M’identifier en ligne")
+      ]);
+    }
+    app.innerHTML = `
+      <div class="salut">Bonjour ${esc(prenom)} 👋</div>
+      <a class="hero-scan" href="#/verifier?scan=1"><span class="ico">📷</span>
+        <div><b>Scanner un taxi</b><span>Vérifier le chauffeur et noter la course</span></div></a>
+      ${blocs}
+      <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car</p>`;
+    afficherBadges();
+  }
+
+  // Espace chauffeur : n'affiche que la rubrique demandée (?s=…)
+  const RUBRIQUES_CHAUFFEUR = { carte: "🪪 Ma carte", documents: "📄 Mon permis et mes documents", avis: "⭐ Mes avis", courses: "🧾 Mes courses", messages: "📨 Messages aux agents", vehicule: "🔑 Mon code chauffeur" };
+  function filtrerRubriqueChauffeur() {
+    const s = params().s;
+    if (!s || !RUBRIQUES_CHAUFFEUR[s]) return;
+    const regles = [[/Mes messages aux agents/, "messages"], [/Mon code chauffeur/, "vehicule"], [/Mes documents|conforme/i, "documents"],
+      [/Avis des clients/, "avis"], [/Mes courses/, "courses"]];
+    [...app.children].forEach((el) => {
+      if (el.matches(".eyebrow, h1")) { el.remove(); return; }
+      let r = el.dataset.rub;
+      if (!r) { const txt = el.querySelector("h2, h3")?.textContent || ""; r = (regles.find(([re]) => re.test(txt)) || [])[1]; }
+      if (r !== s) el.hidden = true;
+    });
+    app.insertAdjacentHTML("afterbegin", `<a class="retour" href="#/accueil">← Accueil</a><h1>${RUBRIQUES_CHAUFFEUR[s]}</h1>`);
+  }
+
   /* ---------- Vue : carte publique d'un chauffeur (scan de son QR) ---------- */
   async function vueCarte() {
     const code = params().c;
@@ -1373,6 +1584,7 @@
     if (!aRole("chauffeur")) { app.innerHTML = `<div class="card">Cet espace est réservé aux chauffeurs.</div><a class="btn jaune" href="#/chauffeur?fiche=1">🚖 Je suis chauffeur : m’identifier</a>`; return; }
     const uid = etat.session.user.id;
     const insc = await sectionInscription(uid);
+    const mesMessages = await htmlMesMessages();
     if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
     const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
     const [conf, docs, aff, courses, avis] = await Promise.all([
@@ -1385,6 +1597,7 @@
     const av = avis.data || [];
     const pct = (k) => (av.length ? Math.round((100 * av.filter((a) => a[k] === "excellent").length) / av.length) : 0);
     const conforme = conf.data === true;
+    const permisVerrou = conforme; // permis vérifié et valide = verrouillé
     const veh = aff.data?.vehicules;
     const coursesJour = (courses.data || []).filter((c) => new Date(c.date_heure) >= aujourdhui);
     const recetteJour = coursesJour.reduce((s, c) => s + c.prix_fc * (c.passagers || 1), 0);
@@ -1393,11 +1606,13 @@
     app.innerHTML = `
       <p class="eyebrow">Espace chauffeur</p>
       <h1>${esc(etat.profil?.nom || "Chauffeur")}</h1>
-      ${insc.html}
+      <div data-rub="carte">${insc.html}</div>
       <div class="card ${conforme ? "dark" : "accent"}">
         <h2>${conforme ? "✔ Chauffeur conforme" : "Pas encore conforme"}</h2>
-        <p class="muted">${conforme ? "Vos 4 documents obligatoires sont vérifiés et valides. Le badge s’affiche aux clients." : "Il faut le permis, le contrôle technique, l’assurance et l’autorisation de transport, vérifiés par un agent et non expirés."}</p>
+        <p class="muted">${conforme ? "Votre permis de conduire est vérifié et valide. Le badge s’affiche aux clients."
+          : "Il faut un <b>permis de conduire vérifié</b> par un agent et non expiré. Ajoutez-le dans votre fiche (bouton « Modifier mes informations ») ou ci-dessous."}</p>
       </div>
+      ${mesMessages}
       <div class="card">
         <h3>Mon code chauffeur</h3>
         <p class="muted">Donnez ce code au propriétaire du véhicule pour qu’il vous affecte.</p>
@@ -1421,7 +1636,8 @@
         }).join("") || '<li class="muted">Aucun document déposé.</li>'}</ul>
         <form id="doc">
           <h3 style="margin-top:16px">Ajouter un document</h3>
-          <label for="type">Type</label><select id="type">${Object.entries(DOCS).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
+          <p class="muted">Seul le <b>permis de conduire</b> est obligatoire. Les autres documents sont facultatifs.</p>
+          <label for="type">Type</label><select id="type">${Object.entries(DOCS).map(([k, v]) => `<option value="${k}" ${k === "permis" && permisVerrou ? "disabled" : ""}>${v}${k === "permis" ? (permisVerrou ? " (vérifié 🔒)" : " (obligatoire)") : " (facultatif)"}</option>`).join("")}</select>
           <div class="row">
             <div><label for="num">Numéro</label><input id="num"></div>
             <div><label for="exp">Expire le</label><input id="exp" type="date" required></div>
@@ -1462,13 +1678,15 @@
       </div>`;
 
     insc.apres();
+    filtrerRubriqueChauffeur();
+    activerMesMessages();
     $("#copier").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(uid); toast("Code copié."); } catch (_) { toast("Sélectionnez le code pour le copier.", true); }
     });
     $("#doc").addEventListener("submit", async (e) => {
       e.preventDefault();
       const { error } = await sb.from("documents_chauffeur").insert({ chauffeur_id: uid, type: $("#type").value, numero: $("#num").value.trim() || null, date_expiration: $("#exp").value });
-      if (error) return erreur(error);
+      if (error) { if (!gererErreurPermis(error, $("#num").value.trim())) erreur(error); return; }
       toast("Document déposé. Un agent va le vérifier."); vueChauffeur();
     });
     const prixAuto = () => {
@@ -1588,7 +1806,7 @@
             <div><b>${esc(ch.nom || "Chauffeur")}</b>${ch.telephone ? `<div class="muted">📞 ${esc(ch.telephone)}</div>` : ""}</div>
             <span class="badge ${ch.conforme ? "ok" : "ko"}">${ch.conforme ? "Conforme" : "Non conforme"}</span>
           </div>
-          <ul class="liste" style="margin-top:8px">${Object.entries(DOCS).filter(([k]) => k !== "vignette").map(([k, lib]) => {
+          <ul class="liste" style="margin-top:8px">${Object.entries(DOCS).filter(([k]) => k === "permis").map(([k, lib]) => {
             const d = (ch.documents || []).filter((x) => x.type === k).sort((a, b) => (a.expiration < b.expiration ? 1 : -1))[0];
             const etatDoc = !d ? '<span class="badge ko">Manquant</span>'
               : d.statut !== "verifie" ? `<span class="badge att">${d.statut === "rejete" ? "Rejeté" : "En attente"}</span>`
@@ -1663,16 +1881,18 @@
     if (!etat.session) return besoinConnexion("Espace contrôle");
     if (!aRole("agent", "admin")) { app.innerHTML = `<div class="card">Cet espace est réservé aux agents de contrôle et aux administrateurs.</div>`; return; }
     const onglets = aRole("admin")
-      ? { tableau: "Tableau de bord", chauffeurs: "Chauffeurs", paiements: "Paiements", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", parametres: "Paramètres", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
-      : { chauffeurs: "Chauffeurs", paiements: "Paiements", signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
-    const onglet = onglets[params().o] ? params().o : Object.keys(onglets)[0];
-
+      ? { tableau: "Tableau de bord", chauffeurs: "Chauffeurs", messages: "Messages", paiements: "Paiements", avis: "Avis", trajets: "Trajets et prix", utilisateurs: "Utilisateurs", parametres: "Paramètres", journal: "Journal", signalements: "Signalements", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" }
+      : { chauffeurs: "Chauffeurs", messages: "Messages", paiements: "Paiements", signalements: "Signalements", avis: "Avis", documents: "Documents", vehicules: "Véhicules", recidivistes: "Récidivistes" };
+    if (!onglets[params().o]) {
+      app.innerHTML = `<p class="eyebrow">${ROLES[roleVue()]}</p><h1>Administration</h1>${htmlFamillesAdmin()}`;
+      afficherBadges();
+      return;
+    }
+    const onglet = params().o;
     app.innerHTML = `
-      <p class="eyebrow">${ROLES[etat.profil.role]}</p>
-      <h1>Contrôle et administration</h1>
-      <div class="onglets">${Object.entries(onglets).map(([k, v]) => `<button data-o="${k}" class="${k === onglet ? "actif" : ""}">${v}</button>`).join("")}</div>
+      <a class="retour" href="#/admin">← Administration</a>
+      <h1>${NOMS_ONGLETS[onglet] || onglets[onglet]}</h1>
       <div id="contenu"><div class="card">Chargement…</div></div>`;
-    app.querySelectorAll(".onglets button").forEach((b) => b.addEventListener("click", () => (location.hash = "#/admin?o=" + b.dataset.o)));
 
     const zone = $("#contenu");
     try {
@@ -1689,6 +1909,7 @@
       else if (onglet === "journal") await adminJournal(zone);
       else if (onglet === "avis") await adminAvis(zone);
       else if (onglet === "chauffeurs") await adminChauffeurs(zone);
+      else if (onglet === "messages") await adminMessages(zone);
       else if (onglet === "paiements") await adminPaiements(zone);
       else if (onglet === "parametres") await adminParametres(zone);
     } catch (e) { erreur(e); }
@@ -2091,7 +2312,7 @@
   }
 
   /* ---------- Journal ---------- */
-  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Noter une course", avis: "Mes avis", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration", carte: "Carte chauffeur" };
+  const NOMS_ECRANS = { prix: "Prix", verifier: "Vérification QR", signaler: "Noter une course", avis: "Mes avis", compte: "Compte", chauffeur: "Espace chauffeur", proprietaire: "Mes véhicules", admin: "Administration", carte: "Carte chauffeur", accueil: "Accueil" };
   function journaliser(action, detail) {
     if (!etat.session) return;
     sb.from("journal_activite").insert({ action, detail: detail ? String(detail).slice(0, 200) : null }).then(() => {}, () => {});
@@ -2101,17 +2322,15 @@
   function majTabbar() {
     const bar = document.querySelector(".tabbar");
     bar.hidden = !etat.session;
-    const role = aRole("chauffeur") ? ["chauffeur", "#/chauffeur", "🚖", t("tab_chauffeur")]
-      : aRole("proprietaire") ? ["proprietaire", "#/proprietaire", "🚌", t("tab_vehicules")]
-      : aRole("agent", "admin") ? ["admin", "#/admin", "🛡️", t("tab_admin")] : null;
     const items = [
+      ["accueil", "#/accueil", "🏠", t("tab_accueil")],
       ["prix", "#/prix", "💰", t("tab_prix")],
-      ["avis", "#/avis", "⭐", t("tab_avis")],
       ["verifier", "#/verifier?scan=1", "📷", t("tab_scanner"), true],
+      ["avis", "#/avis", "⭐", t("tab_avis")],
       ["compte", "#/compte", "👤", t("tab_compte")]
     ];
-    if (role) items.push(role);
-    const actif = location.hash.replace(/^#\//, "").split("?")[0] || "verifier";
+    const dem = location.hash.replace(/^#\//, "").split("?")[0] || "accueil";
+    const actif = ["chauffeur", "proprietaire", "admin", "carte"].includes(dem) ? "accueil" : dem === "signaler" ? "verifier" : dem;
     bar.innerHTML = items.map(([tab, href, ico, lib, centre]) =>
       `<a href="${href}" data-tab="${tab}" class="${centre ? "tab-scan" : ""} ${tab === actif ? "actif" : ""}"><span class="${centre ? "rond" : ""}">${ico}</span>${lib}</a>`).join("");
     bar.querySelector(".tab-scan")?.addEventListener("click", (e) => {
@@ -2291,6 +2510,7 @@
       .carte-ligne{font-size:13px;color:#C9D3E3}
       .carte-id .qr-box{background:#fff;padding:6px;border-radius:8px;flex:none}
       .officiel{background:#FFF4CC;border-radius:10px;padding:10px 12px}
+      input[readonly],select:disabled{background:#EDE7D6;color:#4A5568;cursor:not-allowed}
       .mdp-zone{position:relative}.mdp-zone input{padding-right:52px}
       .oeil{position:absolute;right:4px;top:50%;transform:translateY(-50%);width:44px;height:40px;border:none;background:none;font-size:20px;cursor:pointer}`;
     document.head.appendChild(st);
@@ -2315,17 +2535,24 @@
       if (vus === null) { marquerVu("mesavis", ids); vus = ids; }
       tabs.avis = ids.filter((i) => !vus.includes(i)).length;
 
+      // Réponses des agents pas encore lues
+      const { data: rep } = await sb.from("messages_agents").select("id").eq("auteur_id", uid).not("reponse", "is", null);
+      const vuesRep = lireVu("reponses", []);
+      const nonLues = (rep || []).filter((m) => !vuesRep.includes(m.id)).length;
+      if (nonLues && !aRole("chauffeur")) tabs.compte = nonLues;
+
       if (aRole("agent", "admin")) {
         const depuisAvis = lireVu("avis", new Date(0).toISOString());
-        const [sig, docs, veh, avis, recid, pay] = await Promise.all([
+        const [sig, docs, veh, avis, recid, pay, msgs] = await Promise.all([
           compter("signalements", (q) => q.in("statut", ["nouveau", "en_verification"])),
           compter("documents_chauffeur", (q) => q.eq("statut", "en_attente")),
           compter("vehicules", (q) => q.eq("agree", false)),
           compter("evaluations", (q) => q.gt("date_heure", depuisAvis)),
           sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0),
-          compter("paiements", (q) => q.eq("statut", "en_attente"))
+          compter("paiements", (q) => q.eq("statut", "en_attente")),
+          compter("messages_agents", (q) => q.eq("statut", "ouvert"))
         ]);
-        Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid, paiements: pay });
+        Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid, paiements: pay, messages: msgs });
         if (aRole("admin")) {
           const depuisUsers = lireVu("utilisateurs", new Date(0).toISOString());
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
@@ -2334,12 +2561,13 @@
       }
 
       if (aRole("chauffeur")) {
-        const { data: d } = await sb.from("documents_chauffeur").select("type, statut, date_expiration").eq("chauffeur_id", uid);
+        const { data: d } = await sb.from("documents_chauffeur").select("type, statut, date_expiration, created_at").eq("chauffeur_id", uid);
         const limite = new Date(Date.now() + 30 * 86400000).toISOString().slice(0, 10);
         // Le document le plus récent de chaque type : rejeté, expiré ou qui expire dans 30 jours
         const parType = {};
-        (d || []).forEach((x) => { if (!parType[x.type] || x.date_expiration > parType[x.type].date_expiration) parType[x.type] = x; });
-        tabs.chauffeur = Object.values(parType).filter((x) => x.statut === "rejete" || x.date_expiration < limite).length;
+        (d || []).forEach((x) => { if (!parType[x.type] || x.created_at > parType[x.type].created_at) parType[x.type] = x; });
+        const p = parType.permis;
+        tabs.chauffeur = (!p || p.statut === "rejete" || p.date_expiration < limite ? 1 : 0) + nonLues;
       }
 
       if (aRole("proprietaire")) {
@@ -2353,6 +2581,14 @@
 
   const pastille = (n) => (n > 0 ? `<span class="pastille">${n > 99 ? "99+" : n}</span>` : "");
   function afficherBadges() {
+    const tb = etat.badges.tabs || {};
+    const totalRole = (tb.admin || 0) + (tb.chauffeur || 0) + (tb.proprietaire || 0);
+    etat.badges.tabs = { ...tb, accueil: totalRole };
+    document.querySelectorAll(".tuile[data-b]").forEach((el) => {
+      el.querySelector(".pastille")?.remove();
+      const n = etat.badges.onglets?.[el.dataset.b] ?? etat.badges.tabs[el.dataset.b];
+      if (n > 0) el.insertAdjacentHTML("beforeend", pastille(n));
+    });
     document.querySelectorAll(".tabbar a[data-tab]").forEach((a) => {
       a.querySelector(".pastille")?.remove();
       const n = etat.badges.tabs[a.dataset.tab];
@@ -2371,7 +2607,7 @@
   // Supabase Realtime envoie chaque changement de la base (en respectant les règles de sécurité :
   // chacun ne reçoit que ce qu'il a le droit de voir). L'écran ouvert se met à jour tout seul.
   const TABLES_TEMPS_REEL = ["signalements", "evaluations", "paiements", "documents_chauffeur", "vehicules", "affectations",
-    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique"];
+    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents"];
   let canalTempsReel = null, minuterieTR = null, tablesTouchees = new Set();
 
   function utilisateurOccupe() {
@@ -2401,6 +2637,8 @@
       toast(nouv.actif ? "✔ Votre compte chauffeur est réactivé." : "⛔ Votre compte chauffeur a été désactivé : " + (nouv.desactive_motif || ""), !nouv.actif);
     } else if (table === "documents_chauffeur" && evt === "UPDATE" && nouv.chauffeur_id === uid && anc?.statut !== nouv.statut) {
       toast(`${DOCS[nouv.type] || "Document"} : ${nouv.statut === "verifie" ? "vérifié ✔" : nouv.statut === "rejete" ? "rejeté" : "en attente"}`, nouv.statut === "rejete");
+    } else if (table === "messages_agents" && evt === "UPDATE" && nouv.auteur_id === uid && nouv.reponse && !anc?.reponse) {
+      toast("📨 Un agent a répondu à votre message.");
     } else if (table === "signalements" && evt === "UPDATE" && nouv.client_id === uid && anc?.statut !== nouv.statut && ["confirme", "rejete"].includes(nouv.statut)) {
       toast(t(nouv.statut === "confirme" ? "merci_confirme" : "sig_rejete", { p: nouv.plaque_saisie || "—" }));
     } else if (aRole("agent", "admin") && evt === "INSERT") {
@@ -2408,6 +2646,7 @@
       else if (table === "paiements") toast("🔔 Nouveau paiement à vérifier.");
       else if (table === "documents_chauffeur") toast("🔔 Nouveau document à vérifier.");
       else if (table === "profils") toast("🔔 Nouvel utilisateur inscrit.");
+      else if (table === "messages_agents") toast("🔔 Nouveau message : " + (nouv.sujet === "permis_en_double" ? "permis déjà enregistré" : "question d’un utilisateur"));
     }
   }
 
@@ -2463,15 +2702,15 @@
   async function rafraichirEcran() {
     if (!etat.session) return;
     const demande = location.hash.replace(/^#\//, "").split("?")[0];
-    const nom = VUES[demande] ? demande : "verifier";
+    const nom = VUES[demande] ? demande : "accueil";
     const p = params();
-    if (nom === "verifier" || nom === "signaler" || nom === "compte" || (nom === "chauffeur" && p.fiche)) return;
+    if (nom === "verifier" || nom === "signaler" || nom === "compte" || (nom === "chauffeur" && p.fiche)) { afficherBadges(); return; }
     try { await VUES[nom](); } catch (_) { /* on réessaiera au prochain changement */ }
     afficherBadges();
   }
 
   /* ---------- Routeur ---------- */
-  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin, carte: vueCarte };
+  const VUES = { prix: vuePrix, verifier: vueVerifier, signaler: vueNoter, avis: vueMesAvis, compte: vueCompte, chauffeur: vueChauffeur, proprietaire: vueProprietaire, admin: vueAdmin, carte: vueCarte, accueil: vueAccueil };
 
   async function route() {
     fermerVerdict();
@@ -2486,8 +2725,9 @@
     }
     // Personne connectée : la première page est la vérification du QR code.
     if (etat.session && demande === "compte" && params().mode === "nouveau") { try { await vueNouveauMotDePasse(); } catch (e) { erreur(e); } return; }
-    const nom = VUES[demande] ? demande : "verifier";
-    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === nom));
+    const nom = VUES[demande] ? demande : "accueil";
+    const ongletBas = ["chauffeur", "proprietaire", "admin", "carte"].includes(nom) ? "accueil" : nom === "signaler" ? "verifier" : nom;
+    document.querySelectorAll(".tabbar a").forEach((a) => a.classList.toggle("actif", a.dataset.tab === ongletBas));
     try { await VUES[nom](); } catch (e) { erreur(e); }
     afficherBadges();
     majBadges();
