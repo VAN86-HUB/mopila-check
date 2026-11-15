@@ -1,17 +1,17 @@
-/* Taxi Bosembo (ex-MOPILA CHECK) — application web (client, chauffeur, propriétaire, agent, admin)
+/* MOPILA CHECK — application web (client, chauffeur, propriétaire, agent, admin)
    Auteur : Ingénieur Van MUFWAR */
 (() => {
   "use strict";
 
   const C = window.MOPILA_CONFIG;
-  const NOM_APP = "Taxi Bosembo";
+  const NOM_APP = "MOPILA CHECK";
   // Le nom est appliqué partout, même si index.html porte encore l'ancien nom
   document.title = NOM_APP + " — Le juste prix du transport à Kinshasa";
   (function renommerEntete() {
     const b = document.querySelector(".brand");
     if (!b) return;
     const mark = b.querySelector(".brand-mark");
-    if (mark) mark.textContent = "B";
+    if (mark) mark.textContent = "M";
     [...b.childNodes].forEach((n) => { if (n.nodeType === 3 && n.textContent.trim()) n.textContent = " " + NOM_APP.toUpperCase(); });
   })();
   const sb = window.supabase.createClient(C.supabaseUrl, C.supabaseKey);
@@ -60,7 +60,7 @@
   ];
   function erreur(e) {
     console.error(e);
-    const m = (e?.message || "").replace(/^PERMIS_EN_DOUBLE:\s*/, "");
+    const m = (e?.message || "").replace(/^(PERMIS_EN_DOUBLE|VEHICULE_NON_CONFORME):\s*/, "");
     const fr = ERREURS_FR.find(([re]) => re.test(m));
     toast(fr ? fr[1] : m || "Une erreur est survenue.", true);
   }
@@ -125,7 +125,7 @@
       verif_eyebrow: "Contrôle du véhicule", verif_titre: "Ce véhicule est-il en règle ?",
       verif_intro: "Scannez le QR code collé dans le véhicule, ou saisissez son code.",
       scanner_qr: "📷 Scanner le QR code", code_vehicule: "Code du véhicule", ok_titre: "Véhicule en règle",
-      ko_titre: "Attention !", inconnu_titre: "Code inconnu", inconnu_txt: "Ce QR code n’est pas enregistré dans Taxi Bosembo. Soyez prudent.",
+      ko_titre: "Attention !", inconnu_titre: "Code inconnu", inconnu_txt: "Ce QR code n’est pas enregistré dans MOPILA CHECK. Soyez prudent.",
       agree: "Véhicule agréé", non_agree: "Véhicule non agréé", conforme: "Chauffeur conforme", non_conforme: "Chauffeur non conforme",
       deja_signale: "abus confirmé(s) sur ce véhicule", signaler_vehicule: "Signaler ce véhicule", fermer: "Fermer",
       voir_prix: "Voir les prix officiels",
@@ -164,7 +164,7 @@
       verif_eyebrow: "Kotala motuka", verif_titre: "Motuka oyo ezali na mibeko ?",
       verif_intro: "Scanner QR code oyo ezali na kati ya motuka, to koma code na yango.",
       scanner_qr: "📷 Scanner QR code", code_vehicule: "Code ya motuka", ok_titre: "Motuka ezali malamu",
-      ko_titre: "Keba !", inconnu_titre: "Code eyebani te", inconnu_txt: "QR code oyo ekomami na Taxi Bosembo te. Keba.",
+      ko_titre: "Keba !", inconnu_titre: "Code eyebani te", inconnu_txt: "QR code oyo ekomami na MOPILA CHECK te. Keba.",
       agree: "Motuka endimami", non_agree: "Motuka endimami te", conforme: "Shofɛ́lɛ azali na mibeko", non_conforme: "Shofɛ́lɛ azali na mibeko te",
       deja_signale: "mbeba endimami na motuka oyo", signaler_vehicule: "Funda motuka oyo", fermer: "Kokanga",
       voir_prix: "Tala ntalo ya Leta",
@@ -903,7 +903,7 @@
     const cdf = d.taux ? Math.ceil((usd * Number(d.taux.taux_achat)) / 50) * 50 : null;
     const consigne = () => {
       const op = $("#p_op").value, dev = $("#p_dev").value;
-      const num = d.parametres["marchand_" + op] || "[numéro à communiquer par Taxi Bosembo]";
+      const num = d.parametres["marchand_" + op] || "[numéro à communiquer par MOPILA CHECK]";
       $("#p_consigne").innerHTML = `Envoyez <b>${dev === "USD" ? usd + " $" : fc(cdf)}</b> par <b>${OPERATEURS[op]}</b> au numéro <b>${esc(num)}</b>, puis notez la référence reçue par SMS.`;
     };
     $("#p_op").addEventListener("change", consigne);
@@ -925,7 +925,7 @@
   function htmlCarte(c, actif, cot) {
     return `
       <div class="carte-id">
-        <div class="carte-haut"><span class="brand-mark" style="width:28px;height:28px;background:#10233F;color:#F2B705">B</span><b>TAXI BOSEMBO</b><span style="margin-left:auto;font-size:12px">CARTE CHAUFFEUR</span></div>
+        <div class="carte-haut"><span class="brand-mark" style="width:28px;height:28px;background:#10233F;color:#F2B705">M</span><b>MOPILA CHECK</b><span style="margin-left:auto;font-size:12px">CARTE CHAUFFEUR</span></div>
         <div class="carte-corps">
           <div style="flex:1;min-width:0">
             <div class="carte-num">${esc(c.numero_ordre)}</div>
@@ -974,8 +974,8 @@
         </div>
         <div class="card" style="margin-bottom:12px">
           <h3>🖨️ Mes documents à imprimer</h3>
-          <button class="btn jaune" id="affiche-pdf" type="button">🪧 Affiche pour mon véhicule</button>
-          <p class="muted" style="margin-top:6px">À imprimer et placer derrière le pare-brise : numéro d’ordre et QR code, lus par les passagers et les agents.</p>
+          <button class="btn jaune" id="affiche-pdf" type="button">🔳 Autocollant pour mon véhicule</button>
+          <p class="muted" style="margin-top:6px">Il ne porte que <b>votre QR code et votre numéro d’ordre</b>. À imprimer, découper et coller sur le véhicule : passagers et agents le scannent.</p>
           <button class="btn ligne" id="fiche-pdf" type="button">📄 Ma fiche personnelle (PDF)</button>
           <p class="muted" style="margin-top:6px">Toutes vos informations : document personnel, à garder pour vous.</p>
           <button class="btn ligne" id="attest-pdf" type="button">🧾 Mon attestation de paiement (PDF)</button>
@@ -1035,7 +1035,7 @@
     doc.setFillColor(...nuit); doc.rect(0, 0, W, 38, "F");
     doc.setFillColor(...jaune); doc.rect(0, 38, W, 2, "F");
     doc.setFillColor(...jaune); doc.roundedRect(M, 10, 18, 18, 3, 3, "F");
-    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("B", M + 9, 22.5, { align: "center" });
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("M", M + 9, 22.5, { align: "center" });
     doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(pdfTxt(NOM_APP), M + 24, 19);
     doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text("Fiche d'identification du chauffeur", M + 24, 26);
     doc.setFontSize(9); doc.text("Éditée le " + pdfTxt(new Date().toLocaleString("fr-FR")), W - M, 26, { align: "right" });
@@ -1132,7 +1132,7 @@
     doc.setFillColor(...nuit); doc.rect(0, 0, W, 38, "F");
     doc.setFillColor(...jaune); doc.rect(0, 38, W, 2, "F");
     doc.setFillColor(...jaune); doc.roundedRect(M, 10, 18, 18, 3, 3, "F");
-    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("B", M + 9, 22.5, { align: "center" });
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("M", M + 9, 22.5, { align: "center" });
     doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(pdfTxt(NOM_APP), M + 24, 19);
     doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(pdfTxt("Le juste prix du transport à Kinshasa · Projet de Mopila Car"), M + 24, 26);
 
@@ -1195,7 +1195,7 @@
     y += 8;
     doc.setDrawColor(226, 220, 203); doc.setLineWidth(0.3); doc.line(M, y, W - M, y); y += 7;
     doc.setTextColor(...doux); doc.setFontSize(9);
-    doc.text(doc.splitTextToSize(pdfTxt("Cette attestation est générée automatiquement par l'application après la confirmation du paiement. Elle reste disponible à tout moment dans le profil du chauffeur. Les informations peuvent être vérifiées en scannant le QR code ou auprès d'un agent Taxi Bosembo."), W - 2 * M), M, y);
+    doc.text(doc.splitTextToSize(pdfTxt("Cette attestation est générée automatiquement par l'application après la confirmation du paiement. Elle reste disponible à tout moment dans le profil du chauffeur. Les informations peuvent être vérifiées en scannant le QR code ou auprès d'un agent MOPILA CHECK."), W - 2 * M), M, y);
     doc.text(pdfTxt(`Éditée le ${new Date().toLocaleString("fr-FR")}`), M, y + 14);
     doc.setDrawColor(226, 220, 203); doc.line(M, 285, W - M, 285);
     doc.setFontSize(8); doc.text(pdfTxt(`${NOM_APP} - Projet de Mopila Car - ${numAtt}`), M, 290);
@@ -1206,61 +1206,34 @@
   /* ---------- Affiche à placer derrière le pare-brise ---------- */
   // c : { numero_ordre, code_identite, prenom, nom, postnom }
   async function telechargerAffichePDF(c) {
-    if (!c?.numero_ordre) return erreur({ message: "L’affiche est disponible après la confirmation du paiement." });
-    toast("Préparation de l’affiche…");
+    if (!c?.numero_ordre) return erreur({ message: "L’autocollant est disponible après la confirmation du paiement." });
+    toast("Préparation de l’autocollant…");
     await chargerScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
     const tmp = document.createElement("div");
     tmp.style.cssText = "position:fixed;left:-9999px";
     document.body.appendChild(tmp);
-    new QRCode(tmp, { text: lienCarte(c.code_identite), width: 600, height: 600, correctLevel: window.QRCode?.CorrectLevel?.H });
+    new QRCode(tmp, { text: lienCarte(c.code_identite), width: 800, height: 800, correctLevel: window.QRCode?.CorrectLevel?.H });
     await new Promise((r) => setTimeout(r, 300));
     const qr = tmp.querySelector("canvas")?.toDataURL("image/png") || tmp.querySelector("img")?.src;
     tmp.remove();
 
     const { jsPDF } = window.jspdf;
     const doc = new jsPDF({ unit: "mm", format: "a4" });
-    const W = 210, H = 297, M = 14;
-    const nuit = [16, 35, 63], jaune = [242, 183, 5];
-    // Cadre et fond
-    doc.setFillColor(...nuit); doc.rect(0, 0, W, H, "F");
-    doc.setFillColor(...jaune); doc.rect(0, 0, W, 46, "F");
-    // Logo + nom
-    doc.setFillColor(...nuit); doc.roundedRect(M, 10, 26, 26, 4, 4, "F");
-    doc.setTextColor(...jaune); doc.setFont("helvetica", "bold"); doc.setFontSize(26); doc.text("B", M + 13, 28.5, { align: "center" });
-    doc.setTextColor(...nuit); doc.setFontSize(30); doc.text("TAXI BOSEMBO", M + 32, 25);
-    doc.setFont("helvetica", "normal"); doc.setFontSize(12); doc.text(pdfTxt("Le juste prix du transport à Kinshasa"), M + 32, 33);
-    // Titre
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "bold"); doc.setFontSize(20);
-    doc.text(pdfTxt("CHAUFFEUR IDENTIFIÉ"), W / 2, 62, { align: "center" });
-    // Numéro d'ordre
-    doc.setTextColor(...jaune); doc.setFontSize(44); doc.text(pdfTxt(c.numero_ordre), W / 2, 82, { align: "center" });
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "normal"); doc.setFontSize(17);
-    doc.text(pdfTxt([c.prenom, c.nom].filter(Boolean).join(" ")), W / 2, 93, { align: "center" });
-    // QR code sur fond blanc
-    const t = 128, x = (W - t) / 2, y = 102;
-    doc.setFillColor(255, 255, 255); doc.roundedRect(x - 6, y - 6, t + 12, t + 12, 5, 5, "F");
-    if (qr) doc.addImage(qr, "PNG", x, y, t, t);
-    // Consignes
-    let yy = y + t + 18;
-    doc.setTextColor(...jaune); doc.setFont("helvetica", "bold"); doc.setFontSize(15);
-    doc.text(pdfTxt("PASSAGER : scannez avant de monter"), W / 2, yy, { align: "center" });
-    doc.setTextColor(255, 255, 255); doc.setFont("helvetica", "normal"); doc.setFontSize(11.5);
-    yy += 7;
-    doc.text(pdfTxt("Avec l’application Taxi Bosembo : vérifiez le chauffeur, connaissez le prix officiel"), W / 2, yy, { align: "center" });
-    yy += 6;
-    doc.text(pdfTxt("de l’État et notez la course (respect du prix et conduite)."), W / 2, yy, { align: "center" });
-    yy += 10;
-    doc.setDrawColor(...jaune); doc.setLineWidth(0.6); doc.line(M + 30, yy - 4, W - M - 30, yy - 4);
-    doc.setTextColor(201, 211, 227); doc.setFontSize(10.5);
-    doc.text(pdfTxt("Agents de contrôle : le même code ouvre la fiche de contrôle du chauffeur."), W / 2, yy + 2, { align: "center" });
-    // Bas de page
-    doc.setFillColor(...jaune); doc.rect(0, H - 16, W, 16, "F");
-    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(10.5);
-    doc.text(pdfTxt(`${location.host}${location.pathname}`), M, H - 6.5);
-    doc.setFont("helvetica", "normal");
-    doc.text(pdfTxt("Affiche officielle · ne pas photocopier pour un autre chauffeur"), W - M, H - 6.5, { align: "right" });
-    doc.save(`Affiche_${c.numero_ordre}.pdf`);
-    journaliser("affiche imprimée", c.numero_ordre);
+    const W = 210;
+    // Un seul autocollant centré : QR code + numéro d'ordre, rien d'autre
+    const cote = 150, x = (W - cote) / 2, y = 40;
+    const cadreX = x - 10, cadreY = y - 10, cadreW = cote + 20, cadreH = cote + 52;
+    doc.setDrawColor(150, 150, 150); doc.setLineWidth(0.3);
+    doc.setLineDashPattern?.([3, 2], 0);
+    doc.roundedRect(cadreX, cadreY, cadreW, cadreH, 6, 6, "S");
+    doc.setLineDashPattern?.([], 0);
+    if (qr) doc.addImage(qr, "PNG", x, y, cote, cote);
+    doc.setTextColor(0, 0, 0); doc.setFont("helvetica", "bold"); doc.setFontSize(46);
+    doc.text(pdfTxt(c.numero_ordre), W / 2, y + cote + 24, { align: "center" });
+    doc.setTextColor(150, 150, 150); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+    doc.text(pdfTxt("Découper en suivant les pointillés"), W / 2, cadreY + cadreH + 6, { align: "center" });
+    doc.save(`Autocollant_${c.numero_ordre}.pdf`);
+    journaliser("autocollant imprimé", c.numero_ordre);
   }
 
   /* ---------- Messages aux agents (permis en double, autres questions) ---------- */
@@ -1383,7 +1356,7 @@
   /* ---------- Recherche et filtre dans les longues listes ---------- */
   function ajouterRecherche(zone) {
     zone.querySelectorAll("ul.liste").forEach((ul) => {
-      if (ul.dataset.rech || ["lv", "lu", "la"].includes(ul.id) || ul.children.length < 6) return;
+      if (ul.dataset.rech || ["lv", "lu", "la"].includes(ul.id) || ul.children.length < 6 || ul.closest("#fiche-agent")) return;
       ul.dataset.rech = "1";
       const statuts = [...new Set([...ul.children].map((li) => li.querySelector(".badge")?.textContent.trim()).filter(Boolean))];
       const avecFiltre = statuts.length >= 2 && statuts.length <= 8;
@@ -1408,8 +1381,8 @@
   function vueBienvenue() {
     app.innerHTML = `
       <div class="bienvenue-hero apparition">
-        <div class="splash-logo bv-logo">B</div>
-        <div class="bv-nom">TAXI BOSEMBO</div>
+        <div class="splash-logo bv-logo">M</div>
+        <div class="bv-nom">MOPILA CHECK</div>
         <p class="bv-slogan">Le juste prix du transport à Kinshasa</p>
       </div>
       <div class="card accent">
@@ -1448,10 +1421,10 @@
       titre = "Mon activité";
       tuiles = [
         tuileAcc("#/chauffeur?r=carte", "🪪", "Ma carte", "N° d’ordre, QR, affiche"),
-        tuileAcc("#/chauffeur?r=vehicules", "🚖", "Mes véhicules", "Affectations et courses"),
+        tuileAcc("#/chauffeur?r=vehicules", "🚖", "Mes véhicules", "Affectations et courses", "vehdocs"),
         tuileAcc("#/chauffeur?r=versements", "💵", "Mes versements", "Remis au propriétaire"),
         tuileAcc("#/chauffeur?r=notes", "⭐", "Mes notes", "Avis des clients"),
-        tuileAcc("#/chauffeur?r=documents", "📄", "Mon permis", "Conformité", "chauffeur"),
+        tuileAcc("#/chauffeur?r=documents", "📄", "Mon permis", "Conformité", "permis"),
         tuileAcc("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche")
       ];
     } else if (aRole("proprietaire")) {
@@ -1493,7 +1466,7 @@
     if (!code) { location.hash = "#/verifier"; return; }
     const { data: c, error } = await sb.rpc("carte_chauffeur", { p_code: code });
     if (error) return erreur(error);
-    if (!c) { app.innerHTML = `<div class="card accent"><h1>❓ Carte inconnue</h1><p>Ce QR code ne correspond à aucun chauffeur inscrit à Taxi Bosembo.</p></div>`; return; }
+    if (!c) { app.innerHTML = `<div class="card accent"><h1>❓ Carte inconnue</h1><p>Ce QR code ne correspond à aucun chauffeur inscrit à MOPILA CHECK.</p></div>`; return; }
     try { navigator.vibrate?.(c.actif ? 80 : [200, 100, 200]); } catch (_) { /* vibration indisponible */ }
     app.innerHTML = `
       <p class="eyebrow">Identité du chauffeur</p>
@@ -1522,7 +1495,7 @@
       <form class="card accent" id="rech">
         <h2>Rechercher un chauffeur</h2>
         <label for="r_num">Numéro d’ordre</label>
-        <div class="row"><input id="r_num" placeholder="TB-2026-000001" value="${esc(n)}" autocapitalize="characters"><button class="btn petit">Rechercher</button></div>
+        <div class="row"><input id="r_num" placeholder="MC-2026-000001" value="${esc(n)}" autocapitalize="characters"><button class="btn petit">Rechercher</button></div>
         <p class="muted" style="margin-top:6px">Ou scannez la carte du chauffeur avec le bouton 📷.</p>
       </form>
       <div id="fiche-agent"></div>
@@ -1574,7 +1547,7 @@
         </ul></div>
       <div class="card"><h2>⭐ Cotation des clients</h2>${blocCotation(f.cotation)}
         ${f.avis.filter((a) => a.commentaire).slice(0, 5).map((a) => `<div class="muted" style="margin-top:6px">${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)} « ${esc(a.commentaire)} »</div>`).join("")}</div>
-      <button class="btn ligne" id="affiche-agent" type="button" style="margin-bottom:12px">🪧 Imprimer l’affiche du véhicule pour ce chauffeur</button>
+      <button class="btn ligne" id="affiche-agent" type="button" style="margin-bottom:12px">🔳 Imprimer l’autocollant QR de ce chauffeur</button>
       <button class="btn ligne" id="attest-agent" type="button" style="margin-bottom:12px">🧾 Attestation de paiement de ce chauffeur</button>
       <details class="card"><summary><b>🕘 Historique des modifications (${(f.historique || []).length})</b></summary>
         <ul class="liste" style="margin-top:8px">${(f.historique || []).map((h) => `<li>
@@ -1720,6 +1693,7 @@
       sb.rpc("historique_chauffeur")
     ]);
     const H = hist.data || { affectations: [], versements: [], notes: [] };
+    H.alertes = (await sb.rpc("alertes_documents_vehicule")).data || [];
     const actives = (aff.data || []).filter((a) => a.vehicules);
     const av = avis.data || [];
     const pct = (k) => (av.length ? Math.round((100 * av.filter((a) => a[k] === "excellent").length) / av.length) : 0);
@@ -1747,31 +1721,31 @@
         <div class="row" style="margin-top:12px">
           <button class="btn petit ligne" id="copier" type="button">📋 Copier le code</button>
           <a class="btn petit whatsapp" target="_blank" rel="noopener"
-             href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur Taxi Bosembo pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
+             href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur MOPILA CHECK pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
         </div>
         <p style="margin-top:12px">Véhicule actuel : <b>${actives.length ? actives.map((a) => esc(a.vehicules.plaque) + " · " + MODES[a.vehicules.mode]).join(", ") : "aucun"}</b></p>
       </div>
       ${htmlHistoriqueChauffeur(H)}
 
       <div class="card" data-rub="documents">
-        <h2>Mes documents</h2>
-        <ul class="liste">${(docs.data || []).map((d) => {
+        <h2>Mon permis de conduire</h2>
+        <p class="muted">C’est le <b>seul document</b> demandé au chauffeur. Vérifié par un agent et non expiré, il vous rend conforme.</p>
+        <ul class="liste">${(docs.data || []).filter((d) => d.type === "permis").map((d) => {
           const expire = d.date_expiration < auj;
           const bientot = !expire && (new Date(d.date_expiration) - new Date()) / 86400000 < 30;
           return `<li><div class="ligne-haut"><b>${DOCS[d.type]}</b>${badgeDoc(d.statut)}</div>
             <div class="muted">N° ${esc(d.numero || "—")} · expire le ${jourFr(d.date_expiration)}
             ${expire ? ' <span class="badge ko">Expiré</span>' : bientot ? ' <span class="badge att">Expire bientôt</span>' : ""}</div></li>`;
-        }).join("") || '<li class="muted">Aucun document déposé.</li>'}</ul>
-        <form id="doc">
-          <h3 style="margin-top:16px">Ajouter un document</h3>
-          <p class="muted">Seul le <b>permis de conduire</b> est obligatoire. Les autres documents sont facultatifs.</p>
-          <label for="type">Type</label><select id="type">${Object.entries(DOCS).map(([k, v]) => `<option value="${k}" ${k === "permis" && permisVerrou ? "disabled" : ""}>${v}${k === "permis" ? (permisVerrou ? " (vérifié 🔒)" : " (obligatoire)") : " (facultatif)"}</option>`).join("")}</select>
+        }).join("") || '<li class="muted">Aucun permis déposé.</li>'}</ul>
+        ${permisVerrou ? `<p class="muted" style="margin-top:12px">🔒 Votre permis est vérifié : il ne peut plus être modifié, sauf s’il est rejeté ou expiré.</p>` : `<form id="doc">
+          <h3 style="margin-top:16px">Déposer mon permis</h3>
+          <input type="hidden" id="type" value="permis">
           <div class="row">
             <div><label for="num">Numéro</label><input id="num"></div>
             <div><label for="exp">Expire le</label><input id="exp" type="date" required></div>
           </div>
           <button class="btn">Déposer pour vérification</button>
-        </form>
+        </form>`}
       </div>
 
       <div class="card" data-rub="notes">
@@ -1807,14 +1781,14 @@
     insc.apres();
     activerMesMessages();
     activerHistoriqueChauffeur();
-    rubriques({ carte: "🪪 Ma carte", vehicules: "🚖 Véhicules et courses", versements: "💵 Versements", notes: "⭐ Notes", documents: "📄 Documents" }, "#/chauffeur", "carte");
+    rubriques({ carte: "🪪 Ma carte", vehicules: "🚖 Véhicules et courses", versements: "💵 Versements", notes: "⭐ Notes", documents: "📄 Mon permis" }, "#/chauffeur", "carte");
     ajouterRecherche(app);
     $("#copier").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(uid); toast("Code copié."); } catch (_) { toast("Sélectionnez le code pour le copier.", true); }
     });
-    $("#doc").addEventListener("submit", async (e) => {
+    $("#doc")?.addEventListener("submit", async (e) => {
       e.preventDefault();
-      const { error } = await sb.from("documents_chauffeur").insert({ chauffeur_id: uid, type: $("#type").value, numero: $("#num").value.trim() || null, date_expiration: $("#exp").value });
+      const { error } = await sb.from("documents_chauffeur").insert({ chauffeur_id: uid, type: "permis", numero: $("#num").value.trim() || null, date_expiration: $("#exp").value });
       if (error) { if (!gererErreurPermis(error, $("#num").value.trim())) erreur(error); return; }
       toast("Document déposé. Un agent va le vérifier."); vueChauffeur();
     });
@@ -1846,6 +1820,9 @@
     const totalRecu = vers.filter((w) => w.statut === "recu").reduce((n, w) => n + w.montant_fc, 0);
     const choixVeh = affs.filter((a, i) => affs.findIndex((b) => b.vehicule_id === a.vehicule_id) === i);
     return `
+      ${(H.alertes || []).length ? `<div class="card accent" data-rub="vehicules carte"><h3>⚠️ Documents du véhicule à renouveler</h3><ul class="liste">${H.alertes.map((a) => `
+        <li><b>${esc(a.plaque)}</b> · ${DOCS_VEH[a.type]} <span class="muted">${a.jours_restants < 0 ? "expiré le " + jourFr(a.date_expiration) : "expire le " + jourFr(a.date_expiration) + " (dans " + a.jours_restants + " jour(s))"}</span></li>`).join("")}</ul>
+        <p class="muted">Prévenez le propriétaire : il doit déposer le nouveau document.</p></div>` : ""}
       <div class="card" data-rub="vehicules">
         <h2>🚖 Mes véhicules affectés</h2>
         ${affs.length ? `<ul class="liste">${affs.map((a) => `
@@ -1894,6 +1871,58 @@
       if (error) return erreur(error);
       journaliser("versement déclaré", $("#wmont").value);
       toast("Versement déclaré. Le propriétaire va le confirmer."); vueChauffeur();
+    });
+  }
+
+  /* ---------- Documents du véhicule (déposés par le propriétaire, vérifiés par un agent) ---------- */
+  const DOCS_VEH = { assurance: "Assurance", controle_technique: "Contrôle technique", autorisation_transport: "Autorisation de transport", vignette: "Vignette" };
+  const DOCS_VEH_OBLIG = ["assurance", "controle_technique"];
+  const joursAvant = (d) => { const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(d + "T00:00:00") - t) / 86400000); };
+  function libExpiration(d) {
+    const j = joursAvant(d);
+    return j < 0 ? `<span class="badge ko">Expiré le ${jourFr(d)}</span>` : j <= 30 ? `<span class="badge att">Expire dans ${j} jour(s)</span>` : "";
+  }
+  async function htmlDocumentsVehicule(vid) {
+    const { data } = await sb.rpc("etat_documents_vehicule", { p_vehicule: vid });
+    const E = data || { conforme: false, documents: [] };
+    const dernier = {};
+    (E.documents || []).forEach((d) => { if (!dernier[d.type]) dernier[d.type] = d; });
+    const ligne = (k) => {
+      const d = dernier[k], oblig = DOCS_VEH_OBLIG.includes(k);
+      const etatDoc = !d ? `<span class="badge ${oblig ? "ko" : ""}">${oblig ? "Manquant" : "Facultatif"}</span>` : badgeDoc(d.statut);
+      return `<li><div class="ligne-haut"><b>${DOCS_VEH[k]}${oblig ? " *" : ""}</b>${etatDoc}</div>
+        ${d ? `<div class="muted">N° ${esc(d.numero || "—")} · expire le ${jourFr(d.date_expiration)} ${d.statut === "verifie" ? libExpiration(d.date_expiration) : ""}</div>
+        ${d.statut === "rejete" ? `<div class="muted">Rejeté${d.motif_rejet ? " : " + esc(d.motif_rejet) : ""} — déposez-le à nouveau.</div>` : ""}` : ""}</li>`;
+    };
+    return { conforme: E.conforme, html: `
+      <div class="card ${E.conforme ? "dark" : "accent"}" data-rub="documents">
+        <h2>${E.conforme ? "✔ Véhicule conforme" : "Véhicule pas encore conforme"}</h2>
+        <p class="muted">${E.conforme ? "L’assurance et le contrôle technique sont vérifiés et valides. Vous pouvez affecter un chauffeur."
+          : "Déposez l’<b>assurance</b> et le <b>contrôle technique</b>. Dès qu’un agent les a vérifiés, vous pourrez affecter un chauffeur."}</p>
+      </div>
+      <div class="card" data-rub="documents">
+        <h2>📄 Documents du véhicule</h2>
+        <ul class="liste">${Object.keys(DOCS_VEH).map(ligne).join("")}</ul>
+        <p class="muted">* obligatoires. Vous et votre chauffeur êtes avertis 30 jours avant l’expiration.</p>
+        <form id="docveh" style="margin-top:12px">
+          <h3>Déposer un document</h3>
+          <label for="dv_type">Document</label>
+          <select id="dv_type">${Object.entries(DOCS_VEH).map(([k, v]) => `<option value="${k}">${v}${DOCS_VEH_OBLIG.includes(k) ? " (obligatoire)" : " (facultatif)"}</option>`).join("")}</select>
+          <div class="row">
+            <div><label for="dv_num">Numéro</label><input id="dv_num" required></div>
+            <div><label for="dv_exp">Expire le</label><input id="dv_exp" type="date" required></div>
+          </div>
+          <button class="btn">Déposer pour vérification</button>
+        </form>
+      </div>` };
+  }
+  function activerDocumentsVehicule(vid, retour) {
+    $("#docveh")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await sb.from("documents_vehicule").insert({ vehicule_id: vid, type: $("#dv_type").value, numero: $("#dv_num").value.trim(), date_expiration: $("#dv_exp").value });
+      if (error) return erreur(error);
+      journaliser("document véhicule déposé", DOCS_VEH[$("#dv_type").value]);
+      toast("Document déposé. Un agent va le vérifier."); retour();
     });
   }
 
@@ -1952,11 +1981,13 @@
     const p = params();
     if (p.v) return vueSuiviVehicule(Number(p.v));
     const uid = etat.session.user.id;
-    const [{ data: flotte, error }, { data: dispo }] = await Promise.all([sb.rpc("suivi_flotte"), sb.rpc("chauffeurs_sans_vehicule")]);
+    const [{ data: flotte, error }, { data: dispo }, { data: confV }, { data: alV }] = await Promise.all([sb.rpc("suivi_flotte"), sb.rpc("chauffeurs_sans_vehicule"), sb.rpc("conformite_flotte"), sb.rpc("alertes_documents_vehicule")]);
+    const conf = confV || {}, alertesV = alV || [];
+    const alerteDe = (vid) => alertesV.filter((a) => a.vehicule_id === vid).map((a) => `${DOCS_VEH[a.type]} ${a.jours_restants < 0 ? "expiré" : "expire dans " + a.jours_restants + " j"}`);
     if (error) return erreur(error);
     const libres = dispo || [];
     const somme = (k) => flotte.reduce((s, v) => s + Number(v[k] || 0), 0);
-    const alertes = flotte.filter((v) => v.plaintes_ouvertes > 0 || v.doc_alerte || (v.chauffeur_id && !v.chauffeur_conforme) || !v.chauffeur_id);
+    const alertes = flotte.filter((v) => v.plaintes_ouvertes > 0 || v.doc_alerte || (v.chauffeur_id && !v.chauffeur_conforme) || !v.chauffeur_id || !conf[v.vehicule_id] || alerteDe(v.vehicule_id).length);
 
     app.innerHTML = `
       <p class="eyebrow">Propriétaire</p>
@@ -1965,9 +1996,11 @@
         + tuile(fc(somme("recette_mois")), "recette du mois") + tuile(somme("plaintes_ouvertes"), "plainte(s) en cours"))}
       ${alertes.length ? `<div class="card accent"><h3>⚠️ À surveiller</h3><ul class="liste">${alertes.map((v) => `
         <li><b>${esc(v.plaque)}</b> · <span class="muted">${[
+          !conf[v.vehicule_id] ? "véhicule non conforme (documents)" : "",
+          ...alerteDe(v.vehicule_id),
           !v.chauffeur_id ? "aucun chauffeur affecté" : "",
           v.chauffeur_id && !v.chauffeur_conforme ? "chauffeur non conforme" : "",
-          v.doc_alerte ? "document du chauffeur bientôt expiré" : "",
+          v.doc_alerte ? "permis du chauffeur bientôt expiré" : "",
           v.plaintes_ouvertes ? v.plaintes_ouvertes + " plainte(s) en cours" : ""].filter(Boolean).join(" · ")}</span></li>`).join("")}</ul></div>` : ""}
       <details class="card" id="dispo" ${p.dispo ? "open" : ""}><summary><b>🚖 Chauffeurs sans véhicule (${libres.length})</b></summary>
         <p class="muted" style="margin-top:8px">Chauffeurs inscrits qui n’ont aucun véhicule en ce moment. Appelez-les, puis demandez-leur leur code chauffeur pour les affecter.</p>
@@ -1979,7 +2012,7 @@
         <div class="card">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
             <div><h2 style="margin:0">${esc(v.plaque)}</h2><span class="muted">${MODES[v.mode]}</span></div>
-            <span class="badge ${v.agree ? "ok" : "att"}">${v.agree ? "Agréé" : "En attente d’agrément"}</span>
+            <span class="badge ${conf[v.vehicule_id] ? "ok" : "ko"}">${conf[v.vehicule_id] ? "Conforme" : "Non conforme"}</span>
           </div>
           <p style="margin-top:10px">🚖 ${v.chauffeur_nom ? `<b>${esc(v.chauffeur_nom)}</b> <span class="badge ${v.chauffeur_conforme ? "ok" : "ko"}">${v.chauffeur_conforme ? "Conforme" : "Non conforme"}</span>` : '<span class="muted">Aucun chauffeur</span>'}</p>
           <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;text-align:center;margin:8px 0">
@@ -2008,8 +2041,8 @@
       e.preventDefault();
       const { data, error } = await sb.from("vehicules").insert({ plaque: $("#plaque").value.trim().toUpperCase().replace(/\s+/g, ""), mode: $("#mode").value, proprietaire_id: uid }).select("id").single();
       if (error) return erreur(error.code === "23505" ? { message: "Cette plaque est déjà enregistrée." } : error);
-      toast("Véhicule enregistré.");
-      location.hash = "#/proprietaire?v=" + data.id;
+      toast("Véhicule enregistré. Déposez maintenant l’assurance et le contrôle technique.");
+      location.hash = "#/proprietaire?v=" + data.id + "&r=documents";
     });
     $("#exp-flotte")?.addEventListener("click", () => telechargerCSV("ma_flotte", [
       ["Plaque", "Mode", "Agréé", "Chauffeur", "Chauffeur conforme", "Recette du jour (FC)", "Recette 7 jours (FC)", "Recette du mois (FC)", "Courses du mois", "Avis", "Prix respecté (%)", "Chauffeur apprécié (%)", "Plaintes en cours", "Plaintes confirmées"],
@@ -2023,6 +2056,7 @@
     const { data: affAct } = await sb.from("affectations").select("chauffeur_id").eq("vehicule_id", id).eq("actif", true).limit(1);
     const chId = affAct?.[0]?.chauffeur_id || null;
     const blocVers = await htmlVersementsVehicule(id, chId);
+    const docsV = await htmlDocumentsVehicule(id);
     const auj = new Date().toISOString().slice(0, 10);
     // Recette des 14 derniers jours, jours sans course compris
     const jours = [];
@@ -2059,10 +2093,11 @@
             return `<li><div class="ligne-haut"><span>${lib}</span>${etatDoc}</div></li>`;
           }).join("")}</ul>`
         : '<p class="muted">Aucun chauffeur affecté à ce véhicule.</p>'}
-        <form id="affecter" style="margin-top:10px">
+        ${docsV.conforme ? `<form id="affecter" style="margin-top:10px">
           <label>${ch ? "Changer de chauffeur" : "Affecter un chauffeur"} (code chauffeur)</label>
           <div class="row"><input name="code" required placeholder="Code donné par le chauffeur"><button class="btn petit">Affecter</button></div>
-        </form>
+        </form>` : `<div class="card accent" style="margin:10px 0 0">🔒 Pour affecter un chauffeur, le véhicule doit être <b>conforme</b> : assurance et contrôle technique vérifiés par un agent.
+          <a class="btn petit ligne" style="margin-top:8px" href="#/proprietaire?v=${id}&r=documents">📄 Déposer les documents</a></div>`}
         ${s.historique.length > 1 ? `<details style="margin-top:10px"><summary class="muted">Historique des chauffeurs (${s.historique.length})</summary>
           <ul class="liste">${s.historique.map((h) => `<li>${esc(h.nom || "—")} <span class="muted">· du ${dateFr(h.debut)}${h.fin ? " au " + dateFr(h.fin) : " à aujourd’hui"}</span></li>`).join("")}</ul></details>` : ""}
       </div>
@@ -2079,6 +2114,7 @@
       </div>
 
       ${blocVers}
+      ${docsV.html}
 
       <div class="card">
         <h2>3. Les avis des clients</h2>
@@ -2116,14 +2152,15 @@
       const t = RUB_V.find(([re]) => re.test(h));
       if (t) { c.dataset.rub = t[1]; const h2 = c.querySelector("h2"); h2.textContent = h2.textContent.replace(/^\d+\.\s*/, ""); }
     });
-    rubriques({ chauffeur: "🚖 Chauffeur", recette: "💰 Recette", versements: "💵 Versements", avis: "⭐ Avis", plaintes: "⚠️ Plaintes", qr: "🔳 QR code" }, "#/proprietaire?v=" + id, "chauffeur");
-    $("#affecter").addEventListener("submit", async (e) => {
+    rubriques({ chauffeur: "🚖 Chauffeur", documents: "📄 Documents", recette: "💰 Recette", versements: "💵 Versements", avis: "⭐ Avis", plaintes: "⚠️ Plaintes", qr: "🔳 QR code" }, "#/proprietaire?v=" + id, "chauffeur");
+    activerDocumentsVehicule(id, () => vueSuiviVehicule(id));
+    $("#affecter")?.addEventListener("submit", async (e) => {
       e.preventDefault();
       const code = e.target.code.value.trim();
       const r1 = await sb.from("affectations").update({ actif: false, fin: new Date().toISOString() }).eq("vehicule_id", v.id).eq("actif", true);
       if (r1.error) return erreur(r1.error);
       const r2 = await sb.from("affectations").insert({ vehicule_id: v.id, chauffeur_id: code });
-      if (r2.error) return erreur({ message: "Code chauffeur invalide ou inconnu." });
+      if (r2.error) return erreur(/VEHICULE_NON_CONFORME/.test(r2.error.message) ? r2.error : { message: "Code chauffeur invalide ou inconnu." });
       journaliser("chauffeur affecté", v.plaque);
       toast("Chauffeur affecté."); vueSuiviVehicule(v.id);
     });
@@ -2139,7 +2176,7 @@
     const onglet = onglets[params().o] ? params().o : Object.keys(onglets)[0];
 
     app.innerHTML = `
-      <p class="eyebrow">${ROLES[etat.profil.role]}</p>
+      <p class="eyebrow">${ROLES[roleVue()]}</p>
       <h1>Contrôle et administration</h1>
       ${GROUPES_ADMIN.map(([g, cles]) => {
         const ks = cles.filter((k) => onglets[k]);
@@ -2190,7 +2227,7 @@
         ${s.prix_officiel_fc ? ` · écart <b>${fc(s.prix_demande_fc - s.prix_officiel_fc)}</b>` : ""}</p>
         ${s.commentaire ? `<p>« ${esc(s.commentaire)} »</p>` : ""}
         ${s.photo_url ? `<button class="btn petit ligne voir-photo" data-p="${esc(s.photo_url)}">Voir la photo</button>` : ""}
-        ${s.vehicule_id ? "" : '<p class="muted">Plaque non enregistrée dans Taxi Bosembo.</p>'}
+        ${s.vehicule_id ? "" : '<p class="muted">Plaque non enregistrée dans MOPILA CHECK.</p>'}
         <label>Note de l’agent</label><input class="note" data-id="${s.id}" value="${esc(s.note_agent || "")}">
         <div class="row">
           <button class="btn petit ligne statut" data-id="${s.id}" data-s="en_verification">En vérification</button>
@@ -2213,10 +2250,13 @@
   }
 
   async function adminDocuments(zone) {
-    const { data, error } = await sb.from("documents_chauffeur")
-      .select("*, chauffeurs(profils(nom, telephone))").eq("statut", "en_attente").order("created_at");
+    const [{ data, error }, dv] = await Promise.all([
+      sb.from("documents_chauffeur").select("*, chauffeurs(profils(nom, telephone))").eq("statut", "en_attente").eq("type", "permis").order("created_at"),
+      sb.from("documents_vehicule").select("*, vehicules(plaque, mode, proprio:profils!vehicules_proprietaire_id_fkey(nom, telephone))").eq("statut", "en_attente").order("cree_le")
+    ]);
     if (error) throw error;
-    zone.innerHTML = data.length ? data.map((d) => `
+    const vdocs = dv.data || [];
+    zone.innerHTML = `<h2>🚖 Permis des chauffeurs (${data.length})</h2>` + (data.length ? data.map((d) => `
       <div class="card">
         <h3>${DOCS[d.type]}</h3>
         <p>${esc(d.chauffeurs?.profils?.nom || "Chauffeur")} · ${esc(d.chauffeurs?.profils?.telephone || "")}</p>
@@ -2225,7 +2265,26 @@
           <button class="btn petit doc" data-id="${d.id}" data-s="verifie">Valider</button>
           <button class="btn petit ligne doc" data-id="${d.id}" data-s="rejete">Rejeter</button>
         </div>
-      </div>`).join("") : `<div class="card">Aucun document en attente.</div>`;
+      </div>`).join("") : `<div class="card">Aucun permis en attente.</div>`)
+      + `<h2 style="margin-top:20px">🚌 Documents des véhicules (${vdocs.length})</h2>` + (vdocs.length ? vdocs.map((d) => `
+      <div class="card">
+        <div class="ligne-haut"><h3>${DOCS_VEH[d.type]}</h3><span class="verdict-plaque" style="font-size:16px;margin:0;padding:2px 8px">${esc(d.vehicules?.plaque || "—")}</span></div>
+        <p>Propriétaire : ${esc(d.vehicules?.proprio?.nom || "—")} ${d.vehicules?.proprio?.telephone ? "· 📞 " + esc(d.vehicules.proprio.telephone) : ""}</p>
+        <p class="muted">N° ${esc(d.numero || "—")} · expire le ${jourFr(d.date_expiration)}${d.date_expiration < new Date().toISOString().slice(0, 10) ? ' <span class="badge ko">Déjà expiré</span>' : ""}</p>
+        <div class="row">
+          <button class="btn petit docv" data-id="${d.id}" data-s="verifie">Valider</button>
+          <button class="btn petit ligne docv" data-id="${d.id}" data-s="rejete">Rejeter</button>
+        </div>
+      </div>`).join("") : `<div class="card">Aucun document de véhicule en attente.</div>`);
+    zone.querySelectorAll(".docv").forEach((b) => b.addEventListener("click", async () => {
+      const rej = b.dataset.s === "rejete";
+      const motif = rej ? prompt("Raison du rejet (visible par le propriétaire) :") : null;
+      if (rej && motif === null) return;
+      const { error } = await sb.from("documents_vehicule").update({ statut: b.dataset.s, motif_rejet: motif || null, verifie_par: etat.session.user.id, verifie_le: new Date().toISOString() }).eq("id", b.dataset.id);
+      if (error) return erreur(error);
+      journaliser(rej ? "document véhicule rejeté" : "document véhicule validé");
+      toast(rej ? "Document rejeté." : "Document validé."); adminDocuments(zone);
+    }));
     zone.querySelectorAll(".doc").forEach((b) => b.addEventListener("click", async () => {
       const { error } = await sb.from("documents_chauffeur").update({ statut: b.dataset.s, verifie_par: etat.session.user.id }).eq("id", b.dataset.id);
       if (error) return erreur(error);
@@ -2337,7 +2396,7 @@
         .f{border:6px solid #10233F;border-radius:16px;padding:24px;display:inline-block;max-width:340px}
         h1{margin:0 0 4px;font-size:28px}.b{background:#F2B705;padding:6px;border-radius:8px;font-weight:bold;margin:12px 0}
         img{width:260px;height:260px}</style></head><body><div class="f">
-        <h1>TAXI BOSEMBO</h1><div>Le juste prix du transport à Kinshasa</div>
+        <h1>MOPILA CHECK</h1><div>Le juste prix du transport à Kinshasa</div>
         <div class="b">Scannez pour vérifier ce véhicule</div><img src="${img}" alt="QR code">
         <h2>${esc(b.dataset.plaque)}</h2><div>${esc(b.dataset.mode)}</div></div>
         <script>window.onload=function(){window.print()}<\/script></body></html>`);
@@ -2838,7 +2897,7 @@
         const depuisAvis = lireVu("avis", new Date(0).toISOString());
         const [sig, docs, veh, avis, recid, pay, msgs] = await Promise.all([
           compter("signalements", (q) => q.in("statut", ["nouveau", "en_verification"])),
-          compter("documents_chauffeur", (q) => q.eq("statut", "en_attente")),
+          Promise.all([compter("documents_chauffeur", (q) => q.eq("statut", "en_attente").eq("type", "permis")), compter("documents_vehicule", (q) => q.eq("statut", "en_attente"))]).then(([a, b]) => a + b),
           compter("vehicules", (q) => q.eq("agree", false)),
           compter("evaluations", (q) => q.gt("date_heure", depuisAvis)),
           sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0),
@@ -2851,9 +2910,22 @@
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
         }
         tabs.admin = Object.values(onglets).reduce((a, b) => a + b, 0) - (onglets.recidivistes || 0);
-        [["signalements", "signalement(s) à traiter"], ["paiements", "paiement(s) d’inscription à confirmer"], ["documents", "document(s) à vérifier"],
+        [["signalements", "signalement(s) à traiter"], ["paiements", "paiement(s) d’inscription à confirmer"], ["documents", "document(s) à vérifier (permis et véhicules)"],
           ["messages", "message(s) de chauffeurs sans réponse"], ["vehicules", "véhicule(s) à agréer"]]
           .forEach(([k, lib]) => { if (onglets[k]) afaire.push([`${onglets[k]} ${lib}`, "#/admin?o=" + k]); });
+      }
+
+      // Documents des véhicules qui expirent bientôt : propriétaire et chauffeur affecté
+      if (aRole("chauffeur", "proprietaire")) {
+        const { data: alv } = await sb.rpc("alertes_documents_vehicule");
+        (alv || []).forEach((a) => {
+          const quand = a.jours_restants < 0 ? `a expiré le ${jourFr(a.date_expiration)}` : `expire dans ${a.jours_restants} jour(s)`;
+          afaire.push([`⚠️ ${DOCS_VEH[a.type]} du véhicule ${a.plaque} ${quand}`,
+            aRole("proprietaire") ? `#/proprietaire?v=${a.vehicule_id}&r=documents` : "#/chauffeur?r=vehicules"]);
+        });
+        etat.alertesVeh = alv || [];
+        if (aRole("chauffeur")) { tabs.chauffeur = (tabs.chauffeur || 0) + (alv || []).length; tabs.vehdocs = (alv || []).length; }
+        if (aRole("proprietaire")) tabs.proprietaire = (tabs.proprietaire || 0) + (alv || []).length;
       }
 
       if (aRole("chauffeur")) {
@@ -2863,7 +2935,8 @@
         const parType = {};
         (d || []).forEach((x) => { if (!parType[x.type] || x.created_at > parType[x.type].created_at) parType[x.type] = x; });
         const p = parType.permis;
-        tabs.chauffeur = (!p || p.statut === "rejete" || p.date_expiration < limite ? 1 : 0) + nonLues;
+        tabs.permis = !p || p.statut === "rejete" || p.date_expiration < limite ? 1 : 0;
+        tabs.chauffeur = (tabs.chauffeur || 0) + tabs.permis + nonLues;
         if (!p) afaire.push(["Déposez votre permis de conduire pour être conforme", "#/chauffeur?r=documents"]);
         else if (p.statut === "rejete") afaire.push(["Votre permis a été rejeté : déposez-en un nouveau", "#/chauffeur?r=documents"]);
         else if (p.date_expiration < limite) afaire.push([`Votre permis expire le ${jourFr(p.date_expiration)} : renouvelez-le`, "#/chauffeur?r=documents"]);
@@ -2872,7 +2945,7 @@
       if (aRole("proprietaire")) {
         const { data: f } = await sb.rpc("suivi_flotte");
         const { data: nv } = await sb.rpc("versements_a_confirmer");
-        tabs.proprietaire = (f || []).reduce((n, v) => n + (v.plaintes_ouvertes || 0) + (v.doc_alerte ? 1 : 0) + (v.chauffeur_id && !v.chauffeur_conforme ? 1 : 0), 0) + (nv || 0);
+        tabs.proprietaire = (tabs.proprietaire || 0) + (f || []).reduce((n, v) => n + (v.plaintes_ouvertes || 0) + (v.doc_alerte ? 1 : 0) + (v.chauffeur_id && !v.chauffeur_conforme ? 1 : 0), 0) + (nv || 0);
         const fl = f || [], pl = fl.reduce((n, v) => n + (v.plaintes_ouvertes || 0), 0);
         const sansCh = fl.filter((v) => !v.chauffeur_id).length, nonConf = fl.filter((v) => v.chauffeur_id && !v.chauffeur_conforme).length;
         if (nv) afaire.push([`${nv} versement(s) de chauffeur à confirmer`, "#/proprietaire"]);
@@ -2920,7 +2993,7 @@
   // Supabase Realtime envoie chaque changement de la base (en respectant les règles de sécurité :
   // chacun ne reçoit que ce qu'il a le droit de voir). L'écran ouvert se met à jour tout seul.
   const TABLES_TEMPS_REEL = ["signalements", "evaluations", "paiements", "documents_chauffeur", "vehicules", "affectations",
-    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents", "versements"];
+    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents", "versements", "documents_vehicule"];
   let canalTempsReel = null, minuterieTR = null, tablesTouchees = new Set();
 
   function utilisateurOccupe() {
@@ -3062,7 +3135,7 @@
     majReseau();
     window.addEventListener("online", () => { majReseau(); chargerGrille(); });
     window.addEventListener("offline", majReseau);
-    app.innerHTML = `<div class="splash"><div class="splash-logo">B</div><div class="splash-nom">TAXI BOSEMBO</div><div class="muted">Le juste prix du transport à Kinshasa</div></div>`;
+    app.innerHTML = `<div class="splash"><div class="splash-logo">M</div><div class="splash-nom">MOPILA CHECK</div><div class="muted">Le juste prix du transport à Kinshasa</div></div>`;
     await Promise.all([chargerGrille(), chargerProfil(), new Promise((r) => setTimeout(r, 900))]);
     await montrerIntro();
     sb.auth.onAuthStateChange(async (evt) => {
