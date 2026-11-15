@@ -978,12 +978,15 @@
           <p class="muted" style="margin-top:6px">À imprimer et placer derrière le pare-brise : numéro d’ordre et QR code, lus par les passagers et les agents.</p>
           <button class="btn ligne" id="fiche-pdf" type="button">📄 Ma fiche personnelle (PDF)</button>
           <p class="muted" style="margin-top:6px">Toutes vos informations : document personnel, à garder pour vous.</p>
+          <button class="btn ligne" id="attest-pdf" type="button">🧾 Mon attestation de paiement (PDF)</button>
+          <p class="muted" style="margin-top:6px">Preuve de vos frais d’inscription : numéro d’ordre, montant, référence, date de confirmation.</p>
         </div>
         <div class="card"><h2>⭐ Ma cotation</h2>${blocCotation(cot)}</div>
         <a class="btn ligne" href="#/chauffeur?fiche=1" style="margin-bottom:16px">✏️ Modifier mes informations (gratuit)</a>`,
       apres: () => {
         dessinerQRs();
         $("#fiche-pdf")?.addEventListener("click", () => telechargerFichePDF().catch(erreur));
+        $("#attest-pdf")?.addEventListener("click", () => telechargerAttestationPDF().catch(erreur));
         $("#affiche-pdf")?.addEventListener("click", () => telechargerAffichePDF(c).catch(erreur));
       }
     };
@@ -998,7 +1001,7 @@
       document.head.appendChild(s);
     });
   }
-  const pdfTxt = (x) => String(x ?? "—").replace(/[’‘]/g, "'").replace(/[“”«»]/g, '"').replace(/…/g, "...").replace(/[^\x00-\xFF]/g, "");
+  const pdfTxt = (x) => String(x ?? "—").replace(/[\u202f\u2009]/g, " ").replace(/[’‘]/g, "'").replace(/[“”«»]/g, '"').replace(/…/g, "...").replace(/[^\x00-\xFF]/g, "");
 
   async function telechargerFichePDF() {
     const uid = etat.session.user.id;
@@ -1103,6 +1106,101 @@
     }
     doc.save(`Fiche_${c.numero_ordre}.pdf`);
     journaliser("fiche PDF téléchargée", c.numero_ordre);
+  }
+
+  /* ---------- Attestation de paiement (après confirmation par un agent) ---------- */
+  async function telechargerAttestationPDF(chauffeurId) {
+    toast("Préparation de l’attestation…");
+    const { data: A, error } = await sb.rpc("attestation_paiement", chauffeurId ? { p_chauffeur: chauffeurId } : {});
+    if (error) return erreur(error);
+    if (!A) return erreur({ message: "L’attestation est disponible après la confirmation du paiement par un agent." });
+    await chargerScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+    const c = A.chauffeur, p = A.paiement;
+    const numAtt = "ATT-" + new Date(p.confirme_le).getFullYear() + "-" + String(p.id).padStart(6, "0");
+    const tmp = document.createElement("div");
+    tmp.style.cssText = "position:fixed;left:-9999px";
+    document.body.appendChild(tmp);
+    new QRCode(tmp, { text: lienCarte(c.code_identite), width: 300, height: 300 });
+    await new Promise((res) => setTimeout(res, 300));
+    const qr = tmp.querySelector("canvas")?.toDataURL("image/png") || tmp.querySelector("img")?.src;
+    tmp.remove();
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 18;
+    const nuit = [16, 35, 63], jaune = [242, 183, 5], doux = [74, 85, 104], vert = [31, 122, 77];
+    doc.setFillColor(...nuit); doc.rect(0, 0, W, 38, "F");
+    doc.setFillColor(...jaune); doc.rect(0, 38, W, 2, "F");
+    doc.setFillColor(...jaune); doc.roundedRect(M, 10, 18, 18, 3, 3, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("B", M + 9, 22.5, { align: "center" });
+    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(pdfTxt(NOM_APP), M + 24, 19);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(pdfTxt("Le juste prix du transport à Kinshasa · Projet de Mopila Car"), M + 24, 26);
+
+    let y = 56;
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(22);
+    doc.text("ATTESTATION DE PAIEMENT", M, y);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(11); doc.setTextColor(...doux);
+    doc.text(pdfTxt("N° " + numAtt), M, y + 8);
+    // Cachet « PAYÉ »
+    doc.setDrawColor(...vert); doc.setLineWidth(1.2); doc.roundedRect(W - M - 44, y - 12, 44, 18, 3, 3, "S");
+    doc.setTextColor(...vert); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text(pdfTxt("PAYÉ"), W - M - 22, y - 1, { align: "center" });
+    doc.setFontSize(8); doc.text(new Date(p.confirme_le).toLocaleDateString("fr-FR"), W - M - 22, y + 4, { align: "center" });
+
+    y += 20;
+    const nom = [c.prenom, c.nom, c.postnom].filter(Boolean).join(" ") || "-";
+    doc.setFillColor(246, 243, 234); doc.roundedRect(M, y - 6, W - 2 * M, 22, 3, 3, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "normal"); doc.setFontSize(11);
+    const montantTxt = p.devise === "USD" ? `${p.montant} $` : `${Number(p.montant).toLocaleString("fr-FR")} FC`;
+    const phrase = `${NOM_APP} atteste que ${c.sexe === "F" ? "Madame" : "Monsieur"} ${nom}, chauffeur, a payé ses frais d'inscription d'un montant de ${montantTxt}${p.devise === "CDF" && A.frais_usd ? ` (équivalent de ${A.frais_usd} $)` : ""}. Le paiement a été vérifié et confirmé par un agent, et le numéro d'ordre ${c.numero_ordre} lui a été attribué.`;
+    doc.text(doc.splitTextToSize(pdfTxt(phrase), W - 2 * M - 8), M + 4, y);
+
+    y += 28;
+    const section = (titre) => {
+      doc.setFillColor(237, 231, 214); doc.rect(M, y - 5, W - 2 * M - 52, 8, "F");
+      doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(pdfTxt(titre), M + 3, y + 0.5);
+      y += 9;
+    };
+    const ligne = (lib, val, gras) => {
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(pdfTxt(lib), M + 3, y);
+      doc.setTextColor(...nuit); doc.setFont("helvetica", gras ? "bold" : "normal"); doc.setFontSize(gras ? 11 : 10);
+      const l = doc.splitTextToSize(pdfTxt(val ?? "-"), W - 2 * M - 52 - 56);
+      doc.text(l, M + 56, y); y += 6.5 * Math.max(1, l.length);
+    };
+    const yQR = y;
+    section("Le chauffeur");
+    ligne("Numéro d'ordre", c.numero_ordre, true);
+    ligne("Nom complet", nom, true);
+    ligne("Sexe", c.sexe === "F" ? "Féminin" : "Masculin");
+    ligne("Téléphone", c.telephone1);
+    ligne("Permis de conduire", c.numero_permis || "-");
+    ligne("Type de chauffeur", TYPE_CH[c.type_chauffeur] || "-");
+    ligne("Association", c.association);
+    ligne("Inscrit le", c.inscrit_le ? dateFr(c.inscrit_le) : "-");
+    y += 4; section("Le paiement");
+    ligne("Objet", `Frais d'inscription au registre des chauffeurs${A.frais_usd ? ` (${A.frais_usd} $)` : ""}`);
+    ligne("Montant payé", montantTxt, true);
+    if (p.devise === "CDF" && p.taux) ligne("Taux appliqué", `1 $ = ${Number(p.taux).toLocaleString("fr-FR")} FC (taux du jour)`);
+    ligne("Moyen de paiement", OPERATEURS[p.operateur] || p.operateur);
+    ligne("Numéro payeur", p.telephone);
+    ligne("Référence transaction", p.reference, true);
+    ligne("Déclaré le", dateFr(p.declare_le));
+    ligne("Confirmé le", dateFr(p.confirme_le));
+    ligne("Confirmé par", p.agent);
+    if (qr) {
+      doc.addImage(qr, "PNG", W - M - 46, yQR - 5, 46, 46);
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(doc.splitTextToSize(pdfTxt("Scannez pour vérifier la carte du chauffeur"), 46), W - M - 23, yQR + 46, { align: "center" });
+    }
+
+    y += 8;
+    doc.setDrawColor(226, 220, 203); doc.setLineWidth(0.3); doc.line(M, y, W - M, y); y += 7;
+    doc.setTextColor(...doux); doc.setFontSize(9);
+    doc.text(doc.splitTextToSize(pdfTxt("Cette attestation est générée automatiquement par l'application après la confirmation du paiement. Elle reste disponible à tout moment dans le profil du chauffeur. Les informations peuvent être vérifiées en scannant le QR code ou auprès d'un agent Taxi Bosembo."), W - 2 * M), M, y);
+    doc.text(pdfTxt(`Éditée le ${new Date().toLocaleString("fr-FR")}`), M, y + 14);
+    doc.setDrawColor(226, 220, 203); doc.line(M, 285, W - M, 285);
+    doc.setFontSize(8); doc.text(pdfTxt(`${NOM_APP} - Projet de Mopila Car - ${numAtt}`), M, 290);
+    doc.save(`Attestation_paiement_${c.numero_ordre}.pdf`);
+    journaliser("attestation de paiement téléchargée", c.numero_ordre);
   }
 
   /* ---------- Affiche à placer derrière le pare-brise ---------- */
@@ -1268,6 +1366,44 @@
     }));
   }
 
+  /* ---------- Rubriques (une page découpée en parties) ---------- */
+  function rubriques(liste, base, defaut) {
+    const r = liste[params().r] ? params().r : defaut;
+    const premier = app.querySelector("[data-rub]");
+    if (!premier) return;
+    premier.insertAdjacentHTML("beforebegin", `<div class="onglets rubriques">${Object.entries(liste).map(([k, v]) => `<button type="button" data-r="${k}" class="${k === r ? "actif" : ""}">${v}</button>`).join("")}</div>`);
+    app.querySelectorAll("[data-rub]").forEach((el) => (el.hidden = !el.dataset.rub.split(" ").includes(r)));
+    const act = app.querySelector(".rubriques .actif");
+    if (act) act.parentElement.scrollLeft = act.offsetLeft - 16;
+    app.querySelectorAll(".rubriques button").forEach((b) => b.addEventListener("click", () => {
+      location.hash = base + (base.includes("?") ? "&" : "?") + "r=" + b.dataset.r;
+    }));
+  }
+
+  /* ---------- Recherche et filtre dans les longues listes ---------- */
+  function ajouterRecherche(zone) {
+    zone.querySelectorAll("ul.liste").forEach((ul) => {
+      if (ul.dataset.rech || ["lv", "lu", "la"].includes(ul.id) || ul.children.length < 6) return;
+      ul.dataset.rech = "1";
+      const statuts = [...new Set([...ul.children].map((li) => li.querySelector(".badge")?.textContent.trim()).filter(Boolean))];
+      const avecFiltre = statuts.length >= 2 && statuts.length <= 8;
+      ul.insertAdjacentHTML("beforebegin", `<div class="row recherche" style="margin-bottom:8px">
+        <input type="search" placeholder="🔎 Rechercher (nom, plaque, numéro…)">
+        ${avecFiltre ? `<select><option value="">Tous les statuts</option>${statuts.map((x) => `<option>${esc(x)}</option>`).join("")}</select>` : ""}</div>`);
+      const bloc = ul.previousElementSibling, champ = bloc.querySelector("input"), choix = bloc.querySelector("select");
+      const filtrer = () => {
+        const q = champ.value.trim().toLowerCase(), st = choix ? choix.value : "";
+        [...ul.children].forEach((li) => {
+          const okTexte = !q || li.textContent.toLowerCase().includes(q);
+          const okStatut = !st || li.querySelector(".badge")?.textContent.trim() === st;
+          li.hidden = !(okTexte && okStatut);
+        });
+      };
+      champ.addEventListener("input", filtrer);
+      choix?.addEventListener("change", filtrer);
+    });
+  }
+
   /* ---------- Page de présentation (avant connexion) ---------- */
   function vueBienvenue() {
     app.innerHTML = `
@@ -1311,15 +1447,18 @@
     } else if (aRole("chauffeur")) {
       titre = "Mon activité";
       tuiles = [
-        tuileAcc("#/chauffeur", "🚖", "Mon espace", "Carte, permis, affiche", "chauffeur"),
-        tuileAcc("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche"),
-        tuileAcc("#/prix", "💰", "Prix officiels", "Grille de l’État"),
-        tuileAcc("#/avis", "⭐", "Mes avis", "Mes notes de courses", "avis")
+        tuileAcc("#/chauffeur?r=carte", "🪪", "Ma carte", "N° d’ordre, QR, affiche"),
+        tuileAcc("#/chauffeur?r=vehicules", "🚖", "Mes véhicules", "Affectations et courses"),
+        tuileAcc("#/chauffeur?r=versements", "💵", "Mes versements", "Remis au propriétaire"),
+        tuileAcc("#/chauffeur?r=notes", "⭐", "Mes notes", "Avis des clients"),
+        tuileAcc("#/chauffeur?r=documents", "📄", "Mon permis", "Conformité", "chauffeur"),
+        tuileAcc("#/chauffeur?fiche=1", "✏️", "Mes informations", "Modifier ma fiche")
       ];
     } else if (aRole("proprietaire")) {
       titre = "Ma flotte";
       tuiles = [
         tuileAcc("#/proprietaire", "🚌", "Mes véhicules", "Recette, avis, plaintes", "proprietaire"),
+        tuileAcc("#/proprietaire?dispo=1", "🙋", "Chauffeurs disponibles", "Sans véhicule : nom et téléphone"),
         tuileAcc("#/prix", "💰", "Prix officiels", "Grille de l’État"),
         tuileAcc("#/avis", "⭐", "Mes avis", "Suivi de mes plaintes", "avis"),
         tuileAcc("#/chauffeur?fiche=1", "🚖", "Je suis chauffeur", "M’identifier en ligne")
@@ -1341,6 +1480,7 @@
         <a class="btn jaune gros" href="#/verifier?scan=1">📷 Scanner un taxi</a>
         <a class="btn ligne-claire" href="#/verifier">⌨️ Saisir un code</a>
       </div>
+      <div class="card accent afaire-carte"><h3>📋 À faire</h3><ul class="liste" id="afaire-l"><li class="muted">Chargement…</li></ul></div>
       <h3 class="acc-titre">${titre}</h3>
       <div class="acc-grille">${tuiles.join("")}</div>
       <p class="footer-note">${esc(NOM_APP)} · projet de Mopila Car</p>`;
@@ -1435,6 +1575,7 @@
       <div class="card"><h2>⭐ Cotation des clients</h2>${blocCotation(f.cotation)}
         ${f.avis.filter((a) => a.commentaire).slice(0, 5).map((a) => `<div class="muted" style="margin-top:6px">${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)} « ${esc(a.commentaire)} »</div>`).join("")}</div>
       <button class="btn ligne" id="affiche-agent" type="button" style="margin-bottom:12px">🪧 Imprimer l’affiche du véhicule pour ce chauffeur</button>
+      <button class="btn ligne" id="attest-agent" type="button" style="margin-bottom:12px">🧾 Attestation de paiement de ce chauffeur</button>
       <details class="card"><summary><b>🕘 Historique des modifications (${(f.historique || []).length})</b></summary>
         <ul class="liste" style="margin-top:8px">${(f.historique || []).map((h) => `<li>
           <div class="ligne-haut"><b>${esc(CHAMPS_FICHE[h.champ] || h.champ)}</b><span class="muted">${dateFr(h.le)}</span></div>
@@ -1467,6 +1608,7 @@
       : `<button class="btn jaune" id="b_react" type="button">✔ Réactiver maintenant</button>`}`}`;
     dessinerQRs();
     $("#affiche-agent")?.addEventListener("click", () => telechargerAffichePDF(f).catch(erreur));
+    $("#attest-agent")?.addEventListener("click", () => telechargerAttestationPDF(f.id).catch(erreur));
     const envoyer = async (fn, args, msg) => {
       const { error: er } = await sb.rpc(fn, args);
       if (er) return erreur(er);
@@ -1569,18 +1711,21 @@
     const mesMessages = await htmlMesMessages();
     if (estVraiAdmin()) await sb.from("chauffeurs").upsert({ id: uid }, { onConflict: "id", ignoreDuplicates: true });
     const aujourdhui = new Date(); aujourdhui.setHours(0, 0, 0, 0);
-    const [conf, docs, aff, courses, avis] = await Promise.all([
+    const [conf, docs, aff, courses, avis, hist] = await Promise.all([
       sb.rpc("chauffeur_est_conforme", { p_chauffeur: uid }),
       sb.from("documents_chauffeur").select("*").eq("chauffeur_id", uid).order("created_at", { ascending: false }),
-      sb.from("affectations").select("vehicule_id, vehicules(plaque, mode, agree)").eq("chauffeur_id", uid).eq("actif", true).maybeSingle(),
+      sb.from("affectations").select("vehicule_id, debut, vehicules(plaque, mode, agree)").eq("chauffeur_id", uid).eq("actif", true).order("debut", { ascending: false }),
       sb.from("courses").select("*").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(30),
-      sb.from("evaluations").select("note_prix, note_chauffeur, commentaire, date_heure").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(200)
+      sb.from("evaluations").select("note_prix, note_chauffeur, commentaire, date_heure").eq("chauffeur_id", uid).order("date_heure", { ascending: false }).limit(200),
+      sb.rpc("historique_chauffeur")
     ]);
+    const H = hist.data || { affectations: [], versements: [], notes: [] };
+    const actives = (aff.data || []).filter((a) => a.vehicules);
     const av = avis.data || [];
     const pct = (k) => (av.length ? Math.round((100 * av.filter((a) => a[k] === "excellent").length) / av.length) : 0);
     const conforme = conf.data === true;
     const permisVerrou = conforme; // permis vérifié et valide = verrouillé
-    const veh = aff.data?.vehicules;
+    const veh = actives[0]?.vehicules;
     const coursesJour = (courses.data || []).filter((c) => new Date(c.date_heure) >= aujourdhui);
     const recetteJour = coursesJour.reduce((s, c) => s + c.prix_fc * (c.passagers || 1), 0);
     const auj = new Date().toISOString().slice(0, 10);
@@ -1588,14 +1733,14 @@
     app.innerHTML = `
       <p class="eyebrow">Espace chauffeur</p>
       <h1>${esc(etat.profil?.nom || "Chauffeur")}</h1>
-      ${insc.html}
-      <div class="card ${conforme ? "dark" : "accent"}">
+      <div data-rub="carte">${insc.html}</div>
+      <div class="card ${conforme ? "dark" : "accent"}" data-rub="carte documents">
         <h2>${conforme ? "✔ Chauffeur conforme" : "Pas encore conforme"}</h2>
         <p class="muted">${conforme ? "Votre permis de conduire est vérifié et valide. Le badge s’affiche aux clients."
           : "Il faut un <b>permis de conduire vérifié</b> par un agent et non expiré. Ajoutez-le dans votre fiche (bouton « Modifier mes informations ») ou ci-dessous."}</p>
       </div>
-      ${mesMessages}
-      <div class="card">
+      <div data-rub="carte">${mesMessages}</div>
+      <div class="card" data-rub="vehicules">
         <h3>Mon code chauffeur</h3>
         <p class="muted">Donnez ce code au propriétaire du véhicule pour qu’il vous affecte.</p>
         <code class="cle" id="moncode">${esc(uid)}</code>
@@ -1604,10 +1749,11 @@
           <a class="btn petit whatsapp" target="_blank" rel="noopener"
              href="https://wa.me/?text=${encodeURIComponent(`Bonjour, voici mon code chauffeur Taxi Bosembo pour m’affecter à votre véhicule :\n\n${uid}\n\nCollez-le dans l’application (bouton Véhicules › Affecter un chauffeur).\n— ${etat.profil?.nom || "Chauffeur"}`)}">Envoyer par WhatsApp</a>
         </div>
-        <p style="margin-top:12px">Véhicule actuel : <b>${veh ? esc(veh.plaque) + " · " + MODES[veh.mode] : "aucun"}</b></p>
+        <p style="margin-top:12px">Véhicule actuel : <b>${actives.length ? actives.map((a) => esc(a.vehicules.plaque) + " · " + MODES[a.vehicules.mode]).join(", ") : "aucun"}</b></p>
       </div>
+      ${htmlHistoriqueChauffeur(H)}
 
-      <div class="card">
+      <div class="card" data-rub="documents">
         <h2>Mes documents</h2>
         <ul class="liste">${(docs.data || []).map((d) => {
           const expire = d.date_expiration < auj;
@@ -1628,22 +1774,21 @@
         </form>
       </div>
 
-      <div class="card">
+      <div class="card" data-rub="notes">
         <h2>⭐ Avis des clients</h2>
         ${av.length ? `
           <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px">
             ${tuile(pct("note_prix") + " %", "prix respecté (Excellent)", true)}${tuile(pct("note_chauffeur") + " %", "conduite appréciée")}
           </div>
-          <p class="muted">${av.length} avis au total</p>
-          <ul class="liste">${av.filter((a) => a.commentaire).slice(0, 5).map((a) => `<li>${badgeNote(a.note_prix)} ${badgeNote(a.note_chauffeur)}
-            <div class="muted">« ${esc(a.commentaire)} » · ${dateFr(a.date_heure)}</div></li>`).join("")}</ul>`
+          <p class="muted">${av.length} avis au total · le détail est dans « Mes notes ».</p>`
         : '<p class="muted">Aucun avis pour l’instant. Les clients notent la course en scannant le QR code du véhicule.</p>'}
       </div>
 
-      <div class="card">
+      <div class="card" data-rub="vehicules">
         <h2>Mes courses</h2>
         <p>Aujourd’hui : <b>${coursesJour.length}</b> course(s) · recette <b>${fc(recetteJour)}</b></p>
         <form id="course">
+          ${actives.length > 1 ? `<label for="cveh">Véhicule</label><select id="cveh">${actives.map((a) => `<option value="${a.vehicule_id}">${esc(a.vehicules.plaque)} · ${MODES[a.vehicules.mode]}</option>`).join("")}</select>` : ""}
           <div class="row">
             <div><label for="cdep">Départ</label><select id="cdep">${optionsLieux()}</select></div>
             <div><label for="carr">Arrivée</label><select id="carr">${optionsLieux()}</select></div>
@@ -1661,6 +1806,9 @@
 
     insc.apres();
     activerMesMessages();
+    activerHistoriqueChauffeur();
+    rubriques({ carte: "🪪 Ma carte", vehicules: "🚖 Véhicules et courses", versements: "💵 Versements", notes: "⭐ Notes", documents: "📄 Documents" }, "#/chauffeur", "carte");
+    ajouterRecherche(app);
     $("#copier").addEventListener("click", async () => {
       try { await navigator.clipboard.writeText(uid); toast("Code copié."); } catch (_) { toast("Sélectionnez le code pour le copier.", true); }
     });
@@ -1671,7 +1819,8 @@
       toast("Document déposé. Un agent va le vérifier."); vueChauffeur();
     });
     const prixAuto = () => {
-      const t = veh && prixLocal($("#cdep").value, $("#carr").value, veh.mode);
+      const vc = $("#cveh") ? actives.find((a) => String(a.vehicule_id) === $("#cveh").value)?.vehicules : veh;
+      const t = vc && prixLocal($("#cdep").value, $("#carr").value, vc.mode);
       if (t) $("#cprix").value = t.prix_fc;
     };
     $("#cdep").addEventListener("change", prixAuto);
@@ -1679,12 +1828,113 @@
     $("#course").addEventListener("submit", async (e) => {
       e.preventDefault();
       const { error } = await sb.from("courses").insert({
-        chauffeur_id: uid, vehicule_id: aff.data?.vehicule_id || null,
+        chauffeur_id: uid, vehicule_id: ($("#cveh") ? Number($("#cveh").value) : actives[0]?.vehicule_id) || null,
         depart_id: $("#cdep").value || null, arrivee_id: $("#carr").value || null,
         prix_fc: Number($("#cprix").value), passagers: Number($("#cpass").value)
       });
       if (error) return erreur(error);
       toast("Course enregistrée."); vueChauffeur();
+    });
+  }
+
+  /* ---------- Chauffeur : véhicules affectés, versements, notes ---------- */
+  const STATUT_VERS = { declare: ["att", "En attente du propriétaire"], recu: ["ok", "Reçu ✔"], conteste: ["ko", "Contesté"] };
+  const badgeVers = (s) => `<span class="badge ${STATUT_VERS[s][0]}">${STATUT_VERS[s][1]}</span>`;
+  function htmlHistoriqueChauffeur(H) {
+    const affs = [...(H.affectations || [])].sort((a, b) => (a.debut < b.debut ? 1 : -1));
+    const vers = H.versements || [], notes = H.notes || [];
+    const totalRecu = vers.filter((w) => w.statut === "recu").reduce((n, w) => n + w.montant_fc, 0);
+    const choixVeh = affs.filter((a, i) => affs.findIndex((b) => b.vehicule_id === a.vehicule_id) === i);
+    return `
+      <div class="card" data-rub="vehicules">
+        <h2>🚖 Mes véhicules affectés</h2>
+        ${affs.length ? `<ul class="liste">${affs.map((a) => `
+          <li>
+            <div class="ligne-haut"><span class="verdict-plaque" style="font-size:18px;margin:0;padding:2px 10px">${esc(a.plaque)}</span>
+              ${a.actif ? '<span class="badge ok">En cours</span>' : '<span class="badge">Terminée</span>'}</div>
+            <div class="muted" style="margin-top:6px">${MODES[a.mode] || ""} · propriétaire : <b>${esc(a.proprietaire || "—")}</b>${a.proprietaire_tel ? ` · 📞 ${esc(a.proprietaire_tel)}` : ""}</div>
+            <div class="muted">Début : <b>${dateFr(a.debut)}</b> · Fin : <b>${a.fin ? dateFr(a.fin) : "en cours"}</b></div>
+            <div class="muted">${a.courses} course(s) · recette ${fc(a.recette)} · versé ${fc(a.verse)}${a.avis ? ` · ${a.avis} avis (${a.pct_prix ?? 0} % prix respecté)` : ""}</div>
+          </li>`).join("")}</ul>`
+        : '<p class="muted">Aucun véhicule ne vous a encore été affecté. Donnez votre code chauffeur au propriétaire.</p>'}
+      </div>
+
+      <div class="card" data-rub="versements">
+        <h2>💵 Mes versements</h2>
+        <p class="muted">Ce que vous remettez au propriétaire. Il confirme la réception dans son application.</p>
+        ${vers.length ? `<p>Total reçu par les propriétaires : <b>${fc(totalRecu)}</b></p>` : ""}
+        ${choixVeh.length ? `<form id="versement">
+          <label for="wveh">Véhicule</label><select id="wveh">${choixVeh.map((a) => `<option value="${a.vehicule_id}">${esc(a.plaque)}${a.actif ? "" : " (ancienne affectation)"}</option>`).join("")}</select>
+          <div class="row">
+            <div><label for="wmont">Montant (FC)</label><input id="wmont" type="number" min="1" step="50" required></div>
+            <div><label for="wdate">Date</label><input id="wdate" type="date" value="${new Date().toISOString().slice(0, 10)}" required></div>
+          </div>
+          <label for="wcom">Commentaire (facultatif)</label><input id="wcom" placeholder="Ex. versement du jour">
+          <button class="btn">Déclarer le versement</button>
+        </form>` : ""}
+        ${vers.length ? `<h3 style="margin-top:16px">Historique</h3><ul class="liste">${vers.map((w) => `
+          <li><div class="ligne-haut"><b>${fc(w.montant_fc)}</b>${badgeVers(w.statut)}</div>
+          <div class="muted">${jourFr(w.date_versement)} · ${esc(w.plaque)}${w.commentaire ? " · « " + esc(w.commentaire) + " »" : ""}</div></li>`).join("")}</ul>`
+        : '<p class="muted">Aucun versement enregistré.</p>'}
+      </div>
+
+      <div class="card" data-rub="notes">
+        <h2>⭐ Mes notes</h2>
+        ${notes.length ? `<ul class="liste">${notes.slice(0, 30).map((n) => `
+          <li><div class="ligne-haut"><span>${badgeNote(n.note_prix)} ${badgeNote(n.note_chauffeur)}</span><span class="muted">${esc(n.plaque || "")}</span></div>
+          <div class="muted">${dateFr(n.date_heure)}${n.commentaire ? " · « " + esc(n.commentaire) + " »" : ""}</div></li>`).join("")}</ul>
+          ${notes.length > 30 ? `<p class="muted">Les 30 plus récentes sur ${notes.length}.</p>` : ""}`
+        : '<p class="muted">Aucune note pour l’instant. Les clients notent la course en scannant le QR code du véhicule.</p>'}
+      </div>`;
+  }
+  function activerHistoriqueChauffeur() {
+    $("#versement")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await sb.rpc("ajouter_versement", { p_vehicule: Number($("#wveh").value), p_montant: Number($("#wmont").value), p_date: $("#wdate").value, p_commentaire: $("#wcom").value.trim() || null });
+      if (error) return erreur(error);
+      journaliser("versement déclaré", $("#wmont").value);
+      toast("Versement déclaré. Le propriétaire va le confirmer."); vueChauffeur();
+    });
+  }
+
+  /* ---------- Propriétaire : versements d'un véhicule ---------- */
+  async function htmlVersementsVehicule(vid, chauffeurActuel) {
+    const { data } = await sb.rpc("versements_vehicule", { p_vehicule: vid });
+    const vers = data || [];
+    const recu = vers.filter((w) => w.statut === "recu").reduce((n, w) => n + w.montant_fc, 0);
+    const attente = vers.filter((w) => w.statut === "declare");
+    return `
+      <div class="card" id="versements">
+        <h2>💵 Les versements du chauffeur</h2>
+        ${grille2(tuile(fc(recu), "reçu au total", true) + tuile(attente.length, "à confirmer"))}
+        ${chauffeurActuel ? `<form id="pversement" style="margin-top:10px">
+          <h3>Enregistrer un versement reçu</h3>
+          <div class="row">
+            <div><label for="pmont">Montant (FC)</label><input id="pmont" type="number" min="1" step="50" required></div>
+            <div><label for="pdate">Date</label><input id="pdate" type="date" value="${new Date().toISOString().slice(0, 10)}" required></div>
+          </div>
+          <button class="btn ligne">Enregistrer</button>
+        </form>` : ""}
+        ${vers.length ? `<ul class="liste" style="margin-top:12px">${vers.map((w) => `
+          <li><div class="ligne-haut"><b>${fc(w.montant_fc)}</b>${badgeVers(w.statut)}</div>
+          <div class="muted">${jourFr(w.date_versement)} · ${esc(w.chauffeur || "—")}${w.commentaire ? " · « " + esc(w.commentaire) + " »" : ""}</div>
+          ${w.statut === "declare" ? `<div class="row" style="margin-top:8px"><button class="btn petit jaune" data-vrecu="${w.id}">✔ Reçu</button><button class="btn petit ligne" data-vcont="${w.id}">Contester</button></div>` : ""}</li>`).join("")}</ul>`
+        : '<p class="muted">Aucun versement pour ce véhicule.</p>'}
+      </div>`;
+  }
+  function activerVersementsVehicule(vid, chauffeurActuel, retour) {
+    const traiter = async (id, statut) => {
+      const { error } = await sb.rpc("traiter_versement", { p_id: Number(id), p_statut: statut });
+      if (error) return erreur(error);
+      toast(statut === "recu" ? "Versement confirmé." : "Versement contesté."); retour();
+    };
+    app.querySelectorAll("[data-vrecu]").forEach((b) => b.addEventListener("click", () => traiter(b.dataset.vrecu, "recu")));
+    app.querySelectorAll("[data-vcont]").forEach((b) => b.addEventListener("click", () => traiter(b.dataset.vcont, "conteste")));
+    $("#pversement")?.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const { error } = await sb.rpc("ajouter_versement", { p_vehicule: vid, p_montant: Number($("#pmont").value), p_date: $("#pdate").value, p_chauffeur: chauffeurActuel });
+      if (error) return erreur(error);
+      toast("Versement enregistré."); retour();
     });
   }
 
@@ -1702,8 +1952,9 @@
     const p = params();
     if (p.v) return vueSuiviVehicule(Number(p.v));
     const uid = etat.session.user.id;
-    const { data: flotte, error } = await sb.rpc("suivi_flotte");
+    const [{ data: flotte, error }, { data: dispo }] = await Promise.all([sb.rpc("suivi_flotte"), sb.rpc("chauffeurs_sans_vehicule")]);
     if (error) return erreur(error);
+    const libres = dispo || [];
     const somme = (k) => flotte.reduce((s, v) => s + Number(v[k] || 0), 0);
     const alertes = flotte.filter((v) => v.plaintes_ouvertes > 0 || v.doc_alerte || (v.chauffeur_id && !v.chauffeur_conforme) || !v.chauffeur_id);
 
@@ -1718,6 +1969,12 @@
           v.chauffeur_id && !v.chauffeur_conforme ? "chauffeur non conforme" : "",
           v.doc_alerte ? "document du chauffeur bientôt expiré" : "",
           v.plaintes_ouvertes ? v.plaintes_ouvertes + " plainte(s) en cours" : ""].filter(Boolean).join(" · ")}</span></li>`).join("")}</ul></div>` : ""}
+      <details class="card" id="dispo" ${p.dispo ? "open" : ""}><summary><b>🚖 Chauffeurs sans véhicule (${libres.length})</b></summary>
+        <p class="muted" style="margin-top:8px">Chauffeurs inscrits qui n’ont aucun véhicule en ce moment. Appelez-les, puis demandez-leur leur code chauffeur pour les affecter.</p>
+        <ul class="liste">${libres.map((c) => `<li><div class="ligne-haut"><b>${esc(c.nom)}</b>${c.telephone
+          ? `<a class="btn petit ligne" href="tel:${esc(String(c.telephone).replace(/\s/g, ""))}">📞 ${esc(c.telephone)}</a>` : '<span class="muted">pas de téléphone</span>'}</div></li>`).join("")
+          || '<li class="muted">Aucun chauffeur disponible pour l’instant.</li>'}</ul>
+      </details>
       ${flotte.map((v) => `
         <div class="card">
           <div style="display:flex;justify-content:space-between;gap:8px;align-items:center">
@@ -1745,6 +2002,8 @@
         </form>
       </details>`;
 
+    ajouterRecherche($("#dispo"));
+    if (p.dispo) $("#dispo").scrollIntoView({ block: "start" });
     $("#ajout").addEventListener("submit", async (e) => {
       e.preventDefault();
       const { data, error } = await sb.from("vehicules").insert({ plaque: $("#plaque").value.trim().toUpperCase().replace(/\s+/g, ""), mode: $("#mode").value, proprietaire_id: uid }).select("id").single();
@@ -1761,6 +2020,9 @@
     const { data: s, error } = await sb.rpc("suivi_vehicule", { p_vehicule: id });
     if (error) { erreur(error); location.hash = "#/proprietaire"; return; }
     const v = s.vehicule, ch = s.chauffeur, r = s.recette, av = s.avis;
+    const { data: affAct } = await sb.from("affectations").select("chauffeur_id").eq("vehicule_id", id).eq("actif", true).limit(1);
+    const chId = affAct?.[0]?.chauffeur_id || null;
+    const blocVers = await htmlVersementsVehicule(id, chId);
     const auj = new Date().toISOString().slice(0, 10);
     // Recette des 14 derniers jours, jours sans course compris
     const jours = [];
@@ -1816,6 +2078,8 @@
         <p class="muted" style="margin-top:8px">Recette déclarée par le chauffeur quand il note ses courses (prix × passagers).</p>
       </div>
 
+      ${blocVers}
+
       <div class="card">
         <h2>3. Les avis des clients</h2>
         ${av.total ? `
@@ -1845,6 +2109,14 @@
       if (window.QRCode) new QRCode(el, { text: el.dataset.qr, width: 180, height: 180 });
       else el.textContent = el.dataset.qr;
     });
+    activerVersementsVehicule(id, chId, () => vueSuiviVehicule(id));
+    const RUB_V = [[/Le chauffeur/, "chauffeur"], [/La recette/, "recette"], [/versements/i, "versements"], [/avis/i, "avis"], [/plaintes/i, "plaintes"], [/QR code/, "qr"]];
+    app.querySelectorAll(":scope > .card").forEach((c) => {
+      const h = c.querySelector("h2")?.textContent || "";
+      const t = RUB_V.find(([re]) => re.test(h));
+      if (t) { c.dataset.rub = t[1]; const h2 = c.querySelector("h2"); h2.textContent = h2.textContent.replace(/^\d+\.\s*/, ""); }
+    });
+    rubriques({ chauffeur: "🚖 Chauffeur", recette: "💰 Recette", versements: "💵 Versements", avis: "⭐ Avis", plaintes: "⚠️ Plaintes", qr: "🔳 QR code" }, "#/proprietaire?v=" + id, "chauffeur");
     $("#affecter").addEventListener("submit", async (e) => {
       e.preventDefault();
       const code = e.target.code.value.trim();
@@ -1869,7 +2141,10 @@
     app.innerHTML = `
       <p class="eyebrow">${ROLES[etat.profil.role]}</p>
       <h1>Contrôle et administration</h1>
-      <div class="onglets">${Object.entries(onglets).map(([k, v]) => `<button data-o="${k}" class="${k === onglet ? "actif" : ""}">${v}</button>`).join("")}</div>
+      ${GROUPES_ADMIN.map(([g, cles]) => {
+        const ks = cles.filter((k) => onglets[k]);
+        return ks.length ? `<div class="g-onglets"><span class="g-titre">${g}</span><div class="onglets">${ks.map((k) => `<button data-o="${k}" class="${k === onglet ? "actif" : ""}">${onglets[k]}</button>`).join("")}</div></div>` : "";
+      }).join("")}
       <div id="contenu"><div class="card">Chargement…</div></div>`;
     app.querySelectorAll(".onglets button").forEach((b) => b.addEventListener("click", () => (location.hash = "#/admin?o=" + b.dataset.o)));
 
@@ -1891,8 +2166,16 @@
       else if (onglet === "messages") await adminMessages(zone);
       else if (onglet === "paiements") await adminPaiements(zone);
       else if (onglet === "parametres") await adminParametres(zone);
+      ajouterRecherche(zone);
     } catch (e) { erreur(e); }
   }
+
+  const GROUPES_ADMIN = [
+    ["🛡️ Contrôle", ["signalements", "avis", "recidivistes"]],
+    ["🚖 Chauffeurs", ["chauffeurs", "documents", "paiements", "messages"]],
+    ["🗂️ Gestion", ["vehicules", "trajets", "utilisateurs"]],
+    ["📊 Suivi", ["tableau", "parametres", "journal"]]
+  ];
 
   async function adminSignalements(zone) {
     const { data, error } = await sb.from("signalements")
@@ -2497,6 +2780,16 @@
       .acc-tuile b{font-family:'Oswald',Arial,sans-serif;font-weight:600;font-size:17px}
       .acc-tuile small{color:var(--doux);font-size:13px;line-height:1.3}
       .acc-tuile .pastille{position:absolute;top:10px;right:10px}
+      .g-onglets{margin-bottom:4px}
+      .g-onglets .g-titre{display:block;font-size:11px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--ocre);margin:0 0 4px 2px}
+      .g-onglets .onglets{margin-bottom:8px}
+      .onglets button{position:relative}
+      .onglets button .pastille{margin-left:6px;vertical-align:1px}
+      .rubriques{position:sticky;top:62px;z-index:5;background:var(--creme);padding:8px 0 6px;margin:0 0 12px}
+      .afaire-carte h3{margin-bottom:6px}
+      .afaire{display:flex;justify-content:space-between;align-items:center;gap:10px;text-decoration:none;color:var(--nuit);font-weight:600}
+      .afaire b{color:var(--ocre);font-size:20px}
+      .recherche input,.recherche select{margin:0}
       .tabbar a.tab-scan .pastille{display:none}
       .onglets button .pastille{margin-left:6px;box-shadow:none}
       .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}
@@ -2524,7 +2817,7 @@
   async function majBadges() {
     if (!etat.session || !etat.profil) return;
     const uid = etat.session.user.id;
-    const tabs = {}, onglets = {};
+    const tabs = {}, onglets = {}, afaire = [];
     try {
       // Client : plaintes traitées (confirmées ou rejetées) que l’utilisateur n’a pas encore vues
       const { data: traites } = await sb.from("signalements").select("id").eq("client_id", uid).in("statut", ["confirme", "rejete"]);
@@ -2538,6 +2831,8 @@
       const vuesRep = lireVu("reponses", []);
       const nonLues = (rep || []).filter((m) => !vuesRep.includes(m.id)).length;
       if (nonLues && !aRole("chauffeur")) tabs.compte = nonLues;
+      if (tabs.avis) afaire.push([`${tabs.avis} réponse(s) des agents à vos plaintes`, "#/avis"]);
+      if (nonLues) afaire.push([`${nonLues} réponse(s) des agents à lire`, aRole("chauffeur") ? "#/chauffeur?r=carte" : "#/compte"]);
 
       if (aRole("agent", "admin")) {
         const depuisAvis = lireVu("avis", new Date(0).toISOString());
@@ -2556,6 +2851,9 @@
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
         }
         tabs.admin = Object.values(onglets).reduce((a, b) => a + b, 0) - (onglets.recidivistes || 0);
+        [["signalements", "signalement(s) à traiter"], ["paiements", "paiement(s) d’inscription à confirmer"], ["documents", "document(s) à vérifier"],
+          ["messages", "message(s) de chauffeurs sans réponse"], ["vehicules", "véhicule(s) à agréer"]]
+          .forEach(([k, lib]) => { if (onglets[k]) afaire.push([`${onglets[k]} ${lib}`, "#/admin?o=" + k]); });
       }
 
       if (aRole("chauffeur")) {
@@ -2566,20 +2864,33 @@
         (d || []).forEach((x) => { if (!parType[x.type] || x.created_at > parType[x.type].created_at) parType[x.type] = x; });
         const p = parType.permis;
         tabs.chauffeur = (!p || p.statut === "rejete" || p.date_expiration < limite ? 1 : 0) + nonLues;
+        if (!p) afaire.push(["Déposez votre permis de conduire pour être conforme", "#/chauffeur?r=documents"]);
+        else if (p.statut === "rejete") afaire.push(["Votre permis a été rejeté : déposez-en un nouveau", "#/chauffeur?r=documents"]);
+        else if (p.date_expiration < limite) afaire.push([`Votre permis expire le ${jourFr(p.date_expiration)} : renouvelez-le`, "#/chauffeur?r=documents"]);
       }
 
       if (aRole("proprietaire")) {
         const { data: f } = await sb.rpc("suivi_flotte");
-        tabs.proprietaire = (f || []).reduce((n, v) => n + (v.plaintes_ouvertes || 0) + (v.doc_alerte ? 1 : 0) + (v.chauffeur_id && !v.chauffeur_conforme ? 1 : 0), 0);
+        const { data: nv } = await sb.rpc("versements_a_confirmer");
+        tabs.proprietaire = (f || []).reduce((n, v) => n + (v.plaintes_ouvertes || 0) + (v.doc_alerte ? 1 : 0) + (v.chauffeur_id && !v.chauffeur_conforme ? 1 : 0), 0) + (nv || 0);
+        const fl = f || [], pl = fl.reduce((n, v) => n + (v.plaintes_ouvertes || 0), 0);
+        const sansCh = fl.filter((v) => !v.chauffeur_id).length, nonConf = fl.filter((v) => v.chauffeur_id && !v.chauffeur_conforme).length;
+        if (nv) afaire.push([`${nv} versement(s) de chauffeur à confirmer`, "#/proprietaire"]);
+        if (pl) afaire.push([`${pl} plainte(s) en cours sur vos véhicules`, "#/proprietaire"]);
+        if (sansCh) afaire.push([`${sansCh} véhicule(s) sans chauffeur : voir les chauffeurs disponibles`, "#/proprietaire?dispo=1"]);
+        if (nonConf) afaire.push([`${nonConf} chauffeur(s) non conforme(s) sur vos véhicules`, "#/proprietaire"]);
       }
     } catch (_) { /* pas de pastille si une requête échoue */ }
-    etat.badges = { tabs, onglets };
+    etat.badges = { tabs, onglets, afaire };
     afficherBadges();
   }
 
   const pastille = (n) => (n > 0 ? `<span class="pastille">${n > 99 ? "99+" : n}</span>` : "");
   function afficherBadges() {
     if (!etat.badges) return;
+    const ulAF = document.getElementById("afaire-l");
+    if (ulAF) ulAF.innerHTML = (etat.badges.afaire || []).map(([txt, h]) => `<li><a class="afaire" href="${h}"><span>${esc(txt)}</span><b>›</b></a></li>`).join("")
+      || '<li class="muted">✔ Rien à faire pour l’instant.</li>';
     etat.badges.tabs.accueil = etat.badges.tabs.avis || 0;
     document.querySelectorAll(".acc-tuile[data-b]").forEach((el) => {
       el.querySelector(".pastille")?.remove();
@@ -2597,6 +2908,10 @@
       const n = etat.badges.onglets[b.dataset.o];
       if (n > 0) b.insertAdjacentHTML("beforeend", pastille(n));
     });
+    // Dans chaque groupe, les onglets qui ont du travail passent devant
+    document.querySelectorAll(".g-onglets .onglets").forEach((g) => {
+      [...g.children].sort((a, b) => (b.querySelector(".pastille") ? 1 : 0) - (a.querySelector(".pastille") ? 1 : 0)).forEach((x) => g.appendChild(x));
+    });
   }
   setInterval(() => { if (document.visibilityState === "visible") majBadges(); }, 60000);
   document.addEventListener("visibilitychange", () => { if (document.visibilityState === "visible") majBadges(); });
@@ -2605,7 +2920,7 @@
   // Supabase Realtime envoie chaque changement de la base (en respectant les règles de sécurité :
   // chacun ne reçoit que ce qu'il a le droit de voir). L'écran ouvert se met à jour tout seul.
   const TABLES_TEMPS_REEL = ["signalements", "evaluations", "paiements", "documents_chauffeur", "vehicules", "affectations",
-    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents"];
+    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents", "versements"];
   let canalTempsReel = null, minuterieTR = null, tablesTouchees = new Set();
 
   function utilisateurOccupe() {
@@ -2758,6 +3073,9 @@
         if (evt === "SIGNED_IN") demarrerTempsReel(); else { arreterTempsReel(); route(); }
       }
     });
+    // À chaque ouverture, l'écran d'accueil d'abord (sauf QR code scanné ou lien de mot de passe)
+    if (!v && !cc && !RETOUR_RECUPERATION && !/^#\/compte\?mode=nouveau/.test(location.hash))
+      history.replaceState(null, "", location.pathname + (etat.session ? "#/accueil" : "#/bienvenue"));
     window.addEventListener("hashchange", route);
     demarrerTempsReel();
     if (RETOUR_RECUPERATION && etat.session) location.replace("#/compte?mode=nouveau");
