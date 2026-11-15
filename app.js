@@ -2251,7 +2251,7 @@
 
   async function adminDocuments(zone) {
     const [{ data, error }, dv] = await Promise.all([
-      sb.from("documents_chauffeur").select("*, chauffeurs(profils(nom, telephone))").eq("statut", "en_attente").eq("type", "permis").order("created_at"),
+      sb.from("documents_chauffeur").select("*, chauffeurs(profils!chauffeurs_id_fkey(nom, telephone))").eq("statut", "en_attente").eq("type", "permis").order("created_at"),
       sb.from("documents_vehicule").select("*, vehicules(plaque, mode, proprio:profils!vehicules_proprietaire_id_fkey(nom, telephone))").eq("statut", "en_attente").order("cree_le")
     ]);
     if (error) throw error;
@@ -2298,7 +2298,7 @@
     const [vr, pr, cr] = await Promise.all([
       sb.from("vehicules").select("id, plaque, mode, agree, qr_code, proprietaire_id, affectations(chauffeur_id, actif)").order("created_at", { ascending: false }),
       sb.from("profils").select("id, nom, role").in("role", ["proprietaire", "admin"]).order("nom"),
-      sb.from("chauffeurs").select("id, profils(nom)")
+      sb.from("chauffeurs").select("id, profils!chauffeurs_id_fkey(nom)")
     ]);
     if (vr.error) throw vr.error;
     const proprios = pr.data || [];
@@ -2600,7 +2600,7 @@
   async function adminAvis(zone) {
     const [st, li] = await Promise.all([
       sb.rpc("stats_avis"),
-      sb.from("evaluations").select("id, note_prix, note_chauffeur, prix_officiel_fc, prix_demande_fc, mode, depart_id, arrivee_id, commentaire, date_heure, vehicules(plaque), chauffeurs(profils(nom)), client:profils!evaluations_client_id_fkey(nom)")
+      sb.from("evaluations").select("id, note_prix, note_chauffeur, prix_officiel_fc, prix_demande_fc, mode, depart_id, arrivee_id, commentaire, date_heure, vehicules(plaque), chauffeurs(profils!chauffeurs_id_fkey(nom)), client:profils!evaluations_client_id_fkey(nom)")
         .order("date_heure", { ascending: false }).limit(100)
     ]);
     if (st.error) throw st.error;
