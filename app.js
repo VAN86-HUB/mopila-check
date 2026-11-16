@@ -1596,8 +1596,20 @@
   }
 
   async function adminPaiements(zone) {
-    const { data, error } = await sb.from("paiements").select("*, chauffeurs(nom, postnom, prenom, telephone1)").order("cree_le", { ascending: false }).limit(100);
+    const [{ data, error }, sq] = await Promise.all([
+      sb.from("paiements").select("*, chauffeurs(nom, postnom, prenom, telephone1)").order("cree_le", { ascending: false }).limit(100),
+      sb.from("souscriptions_paquet").select("*, vehicules(plaque, mode, proprio:profils!vehicules_proprietaire_id_fkey(nom, telephone))").order("cree_le", { ascending: false }).limit(100)
+    ]);
     if (error) throw error;
+    const S = sq.data || [], sAtt = S.filter((x) => x.statut === "en_attente"), sAutres = S.filter((x) => x.statut !== "en_attente");
+    const lignePq = (x) => `<div class="card">
+      <div style="display:flex;justify-content:space-between;gap:8px"><b>📦 ${esc(x.paquet_nom)} · ${esc(x.vehicules?.plaque || "—")}</b><span class="muted">${dateFr(x.cree_le)}</span></div>
+      <p>Propriétaire : ${esc(x.vehicules?.proprio?.nom || "—")} ${x.vehicules?.proprio?.telephone ? "· 📞 " + esc(x.vehicules.proprio.telephone) : ""}</p>
+      <p>${OPERATEURS[x.operateur]} · <b>${montantPaye(x.devise, x.montant)}</b>${x.taux ? ` (prix ${Number(x.prix_usd)} $, taux ${fc(x.taux)})` : ""}</p>
+      <p class="muted">Envoyé du ${esc(x.telephone || "—")} · référence <b>${esc(x.reference_transaction)}</b></p>
+      ${x.statut === "en_attente" ? `<div class="row"><button class="btn petit jaune pq-ok" data-id="${x.id}">✔ Paiement reçu</button><button class="btn petit ligne pq-ko" data-id="${x.id}">Refuser</button></div>`
+        : `<span class="badge ${x.statut === "confirme" ? "ok" : "ko"}">${x.statut === "confirme" ? "Confirmé · " + esc(x.numero) : "Refusé"}</span>${x.motif_rejet ? ` <span class="muted">${esc(x.motif_rejet)}</span>` : ""}
+          ${x.statut === "confirme" ? `<button class="btn petit ligne" type="button" data-attpq="${x.id}" style="margin-top:8px">🧾 Attestation (PDF)</button>` : ""}`}</div>`;
     const att = data.filter((p) => p.statut === "en_attente"), autres = data.filter((p) => p.statut !== "en_attente");
     const ligne = (p) => `<div class="card">
       <div style="display:flex;justify-content:space-between;gap:8px"><b>${esc(nomComplet(p.chauffeurs || {}))}</b><span class="muted">${dateFr(p.cree_le)}</span></div>
@@ -1608,7 +1620,26 @@
     zone.innerHTML = `<h2>À vérifier (${att.length})</h2>
       <p class="muted">Vérifiez la référence dans votre compte ${Object.values(OPERATEURS).join(", ")} avant de confirmer. La confirmation génère le numéro d’ordre du chauffeur.</p>
       ${att.map(ligne).join("") || '<div class="card"><p class="muted">Aucun paiement en attente.</p></div>'}
-      ${autres.length ? `<h2 style="margin-top:16px">Déjà traités</h2>${autres.slice(0, 20).map(ligne).join("")}` : ""}`;
+      ${autres.length ? `<h2 style="margin-top:16px">Déjà traités</h2>${autres.slice(0, 20).map(ligne).join("")}` : ""}
+      <h2 style="margin-top:24px">📦 Paquets de documents des véhicules (${sAtt.length})</h2>
+      <p class="muted">La confirmation met le véhicule en règle pour toute la période et crée l’attestation du propriétaire.</p>
+      ${sAtt.map(lignePq).join("") || '<div class="card"><p class="muted">Aucun paiement de paquet en attente.</p></div>'}
+      ${sAutres.length ? `<details class="card"><summary><b>Paquets déjà traités (${sAutres.length})</b></summary>${sAutres.slice(0, 30).map(lignePq).join("")}</details>` : ""}`;
+    zone.querySelectorAll(".pq-ok").forEach((b) => b.addEventListener("click", async () => {
+      b.disabled = true;
+      const { data: num, error: er } = await sb.rpc("confirmer_souscription", { p_id: Number(b.dataset.id), p_valide: true });
+      if (er) { b.disabled = false; return erreur(er); }
+      journaliser("paquet confirmé", num);
+      toast(`Paquet confirmé (${num}). Le véhicule est en règle.`); adminPaiements(zone); majBadges();
+    }));
+    zone.querySelectorAll(".pq-ko").forEach((b) => b.addEventListener("click", async () => {
+      const motif = prompt("Raison du refus (le propriétaire la verra) :", "Référence introuvable");
+      if (motif === null) return;
+      const { error: er } = await sb.rpc("confirmer_souscription", { p_id: Number(b.dataset.id), p_valide: false, p_motif: motif });
+      if (er) return erreur(er);
+      toast("Paiement du paquet refusé."); adminPaiements(zone); majBadges();
+    }));
+    zone.querySelectorAll("[data-attpq]").forEach((b) => b.addEventListener("click", () => telechargerAttestationPaquet(Number(b.dataset.attpq)).catch(erreur)));
     zone.querySelectorAll(".pay-ok").forEach((b) => b.addEventListener("click", async () => {
       b.disabled = true;
       const { data: num, error: er } = await sb.rpc("confirmer_paiement", { p_paiement: Number(b.dataset.id), p_valide: true });
@@ -1627,10 +1658,11 @@
   }
 
   async function adminParametres(zone) {
-    const [par, taux, asso] = await Promise.all([
+    const [par, taux, asso, pqs] = await Promise.all([
       sb.from("parametres").select("cle, valeur"),
       sb.from("taux_change").select("*").order("jour", { ascending: false }).limit(7),
-      sb.from("associations").select("*").order("id")
+      sb.from("associations").select("*").order("id"),
+      sb.from("paquets_documents").select("*").order("duree_mois")
     ]);
     const P2 = Object.fromEntries((par.data || []).map((x) => [x.cle, x.valeur]));
     const auj = new Date().toISOString().slice(0, 10);
@@ -1646,6 +1678,11 @@
         <label>Numéro marchand M-Pesa</label><input name="marchand_mpesa" inputmode="tel" value="${esc(P2.marchand_mpesa || "")}">
         <label>Numéro marchand Orange Money</label><input name="marchand_orange" inputmode="tel" value="${esc(P2.marchand_orange || "")}">
         <button class="btn">Enregistrer</button></form>
+      <form class="card" id="f_pq"><h2>📦 Paquets de documents des véhicules</h2>
+        <p class="muted">Prix d’un paquet qui couvre les 4 documents (assurance, contrôle technique, vignette, autorisation de transport). ${estVraiAdmin() ? "" : "Seul l’administrateur peut modifier les prix."}</p>
+        ${(pqs.data || []).map((k) => `<div class="row" style="align-items:end"><div style="flex:2"><label>${esc(k.nom)}</label><input data-pqprix="${k.id}" type="number" min="0" step="1" value="${Number(k.prix_usd)}"></div>
+          <label style="flex:1;display:flex;gap:6px;align-items:center;margin-bottom:12px"><input type="checkbox" data-pqactif="${k.id}" ${k.actif ? "checked" : ""} style="width:auto"> proposé</label></div>`).join("")}
+        <button class="btn" ${estVraiAdmin() ? "" : "disabled"}>Enregistrer les prix</button></form>
       <form class="card" id="f_asso"><h2>🤝 Associations de chauffeurs</h2>
         <ul class="liste">${(asso.data || []).map((a) => `<li>${esc(a.nom)}</li>`).join("")}</ul>
         <div class="row" style="margin-top:8px"><input name="n" required placeholder="Nom de l’association"><button class="btn petit">Ajouter</button></div></form>`;
@@ -1662,6 +1699,15 @@
       const { error } = await sb.from("parametres").upsert(lignes, { onConflict: "cle" });
       if (error) return erreur(error);
       toast("Paramètres enregistrés.");
+    });
+    $("#f_pq").addEventListener("submit", async (e) => {
+      e.preventDefault();
+      for (const k of pqs.data || []) {
+        const { error } = await sb.from("paquets_documents").update({ prix_usd: Number(zone.querySelector(`[data-pqprix="${k.id}"]`).value), actif: zone.querySelector(`[data-pqactif="${k.id}"]`).checked }).eq("id", k.id);
+        if (error) return erreur(error);
+      }
+      journaliser("prix des paquets modifiés");
+      toast("Prix des paquets enregistrés.");
     });
     $("#f_asso").addEventListener("submit", async (e) => {
       e.preventDefault();
@@ -1875,46 +1921,108 @@
   }
 
   /* ---------- Documents du véhicule (déposés par le propriétaire, vérifiés par un agent) ---------- */
-  const DOCS_VEH = { assurance: "Assurance", controle_technique: "Contrôle technique", autorisation_transport: "Autorisation de transport", vignette: "Vignette" };
-  const DOCS_VEH_OBLIG = ["assurance", "controle_technique"];
+  const DOCS_VEH = { assurance: "Assurance automobile", controle_technique: "Contrôle technique", vignette: "Vignette", autorisation_transport: "Autorisation de transport" };
+  const DOCS_VEH_DESC = {
+    assurance: "Attestation d’assurance en cours de validité : protège les passagers et les tiers.",
+    controle_technique: "PV de contrôle technique délivré par un centre agréé : le véhicule est en état de rouler.",
+    vignette: "Impôt annuel sur le véhicule, payé à l’État.",
+    autorisation_transport: "Autorisation d’exploiter le véhicule pour transporter des personnes."
+  };
+  const DOCS_VEH_OBLIG = Object.keys(DOCS_VEH);
   const joursAvant = (d) => { const t = new Date(); t.setHours(0, 0, 0, 0); return Math.round((new Date(d + "T00:00:00") - t) / 86400000); };
   function libExpiration(d) {
     const j = joursAvant(d);
     return j < 0 ? `<span class="badge ko">Expiré le ${jourFr(d)}</span>` : j <= 30 ? `<span class="badge att">Expire dans ${j} jour(s)</span>` : "";
   }
+  const htmlDocsExiges = (ouvert) => `
+      <details class="card" ${ouvert ? "open" : ""}><summary><b>📋 Documents exigés pour faire le taxi à Kinshasa</b></summary>
+        <p class="muted" style="margin-top:8px">Les agents de contrôle les demandent sur la route, avec le permis du chauffeur. Votre véhicule est <b>conforme</b> quand les 4 sont vérifiés et valides.</p>
+        <ol style="padding-left:20px;margin:8px 0">${Object.entries(DOCS_VEH).map(([k, v]) => `<li style="margin-bottom:6px"><b>${v}</b><br><small class="muted">${DOCS_VEH_DESC[k]}</small></li>`).join("")}</ol>
+        <p class="muted">Vous les avez déjà ? Enregistrez-les un par un. Vous n’en avez aucun ? Choisissez un <b>paquet</b> : MOPILA CHECK s’occupe de tout pour 3 mois, 6 mois ou 1 an.</p>
+      </details>`;
+  const montantPaye = (devise, m) => devise === "USD" ? `${Number(m)} $` : fc(m);
+
   async function htmlDocumentsVehicule(vid) {
-    const { data } = await sb.rpc("etat_documents_vehicule", { p_vehicule: vid });
-    const E = data || { conforme: false, documents: [] };
+    const [et, so, pq, par, tx] = await Promise.all([
+      sb.rpc("etat_documents_vehicule", { p_vehicule: vid }),
+      sb.from("souscriptions_paquet").select("*").eq("vehicule_id", vid).order("cree_le", { ascending: false }),
+      sb.from("paquets_documents").select("*").eq("actif", true).order("duree_mois"),
+      sb.from("parametres").select("cle, valeur"),
+      sb.from("taux_change").select("*").order("jour", { ascending: false }).limit(1)
+    ]);
+    const E = et.data || { conforme: false, documents: [] };
+    const souscr = so.data || [], paquets = pq.data || [];
+    const P = Object.fromEntries((par.data || []).map((x) => [x.cle, x.valeur]));
+    const taux = tx.data?.[0] || null;
+    const enAttente = souscr.find((x) => x.statut === "en_attente");
+    const auj = new Date().toISOString().slice(0, 10);
+    const actif = souscr.find((x) => x.statut === "confirme" && x.fin >= auj);
+    const rejete = souscr[0]?.statut === "rejete" ? souscr[0] : null;
     const dernier = {};
     (E.documents || []).forEach((d) => { if (!dernier[d.type]) dernier[d.type] = d; });
+    const aucunDoc = !(E.documents || []).length;
+    etat.paquetCtx = { paquets, P, taux };
+
     const ligne = (k) => {
-      const d = dernier[k], oblig = DOCS_VEH_OBLIG.includes(k);
-      const etatDoc = !d ? `<span class="badge ${oblig ? "ko" : ""}">${oblig ? "Manquant" : "Facultatif"}</span>` : badgeDoc(d.statut);
-      return `<li><div class="ligne-haut"><b>${DOCS_VEH[k]}${oblig ? " *" : ""}</b>${etatDoc}</div>
-        ${d ? `<div class="muted">N° ${esc(d.numero || "—")} · expire le ${jourFr(d.date_expiration)} ${d.statut === "verifie" ? libExpiration(d.date_expiration) : ""}</div>
-        ${d.statut === "rejete" ? `<div class="muted">Rejeté${d.motif_rejet ? " : " + esc(d.motif_rejet) : ""} — déposez-le à nouveau.</div>` : ""}` : ""}</li>`;
+      const d = dernier[k];
+      const etatDoc = !d ? `<span class="badge ko">Manquant</span>` : badgeDoc(d.statut);
+      return `<li><div class="ligne-haut"><b>${DOCS_VEH[k]}</b>${etatDoc}</div>
+        ${d ? `<div class="muted">N° ${esc(d.numero || "—")} · valable jusqu’au ${jourFr(d.date_expiration)} ${d.statut === "verifie" ? libExpiration(d.date_expiration) : ""}</div>
+        ${d.statut === "rejete" ? `<div class="muted">Rejeté${d.motif_rejet ? " : " + esc(d.motif_rejet) : ""} — enregistrez-le à nouveau.</div>` : ""}` : ""}</li>`;
     };
+    const cdf = (usd) => taux ? Math.ceil((usd * Number(taux.taux_achat)) / 50) * 50 : null;
+    const formPaquet = `
+        <form id="paquet">
+          <p class="muted">Un seul paiement : les <b>4 documents</b> sont pris en charge et votre véhicule devient <b>en règle</b> dès que le paiement est confirmé par un agent.</p>
+          <div class="paquets">${paquets.map((k, i) => `
+            <label class="paquet"><input type="radio" name="pq" value="${k.id}" ${i === paquets.length - 1 ? "checked" : ""}>
+              <span><b>${esc(k.nom)}</b><small>${k.duree_mois === 12 ? "1 an" : k.duree_mois + " mois"} · 4 documents</small></span>
+              <span class="prix">${Number(k.prix_usd)} $${cdf(Number(k.prix_usd)) ? `<small>${fc(cdf(Number(k.prix_usd)))}</small>` : ""}</span></label>`).join("")}</div>
+          <label for="q_op">Moyen de paiement</label>
+          <select id="q_op">${Object.entries(OPERATEURS).map(([k, l]) => `<option value="${k}">${l}</option>`).join("")}</select>
+          <label for="q_dev">Monnaie</label>
+          <select id="q_dev"><option value="USD">Dollars</option>${taux ? `<option value="CDF">Francs congolais (taux du ${jourFr(taux.jour)})</option>` : ""}</select>
+          <div class="officiel" id="q_consigne" style="margin-top:12px"></div>
+          <label for="q_tel">Numéro qui envoie l’argent</label><input id="q_tel" required inputmode="tel" placeholder="+243…" value="${esc(etat.profil?.telephone || "")}">
+          <label for="q_ref">Référence de la transaction (reçue par SMS)</label><input id="q_ref" required placeholder="Ex. MP241114.1234.A12345">
+          <button class="btn jaune gros" id="q_ok">J’ai payé : envoyer</button>
+        </form>`;
+
     return { conforme: E.conforme, html: `
       <div class="card ${E.conforme ? "dark" : "accent"}" data-rub="documents">
-        <h2>${E.conforme ? "✔ Véhicule conforme" : "Véhicule pas encore conforme"}</h2>
-        <p class="muted">${E.conforme ? "L’assurance et le contrôle technique sont vérifiés et valides. Vous pouvez affecter un chauffeur."
-          : "Déposez l’<b>assurance</b> et le <b>contrôle technique</b>. Dès qu’un agent les a vérifiés, vous pourrez affecter un chauffeur."}</p>
+        <h2>${E.conforme ? "✔ Véhicule en règle" : "Véhicule pas encore en règle"}</h2>
+        <p class="muted">${E.conforme ? (actif ? `Couvert par le <b>${esc(actif.paquet_nom)}</b> jusqu’au <b>${jourFr(actif.fin)}</b>. Vous pouvez affecter un chauffeur.` : "Les 4 documents sont vérifiés et valides. Vous pouvez affecter un chauffeur.")
+          : "Les 4 documents doivent être vérifiés et valides avant d’affecter un chauffeur."}</p>
       </div>
-      <div class="card" data-rub="documents">
+      <div data-rub="documents">${htmlDocsExiges(aucunDoc && !enAttente)}</div>
+      ${enAttente ? `<div class="card accent" data-rub="documents"><h2>⏳ Paiement du paquet en vérification</h2>
+        <p>${esc(enAttente.paquet_nom)} · ${OPERATEURS[enAttente.operateur]} · <b>${montantPaye(enAttente.devise, enAttente.montant)}</b> · référence <b>${esc(enAttente.reference_transaction)}</b></p>
+        <p class="muted">Dès qu’un agent confirme le paiement, votre véhicule est en règle et l’attestation PDF apparaît ici.</p></div>` : ""}
+      ${rejete && !enAttente ? `<div class="card" data-rub="documents" style="border-left:6px solid #B42318"><b>Paiement du paquet refusé</b><p class="muted">${esc(rejete.motif_rejet || "Référence introuvable.")} Vous pouvez réessayer.</p></div>` : ""}
+      ${aucunDoc && !enAttente ? `<div class="card accent" data-rub="documents"><h2>📦 Choisissez votre paquet</h2>${formPaquet}</div>` : ""}
+      ${!aucunDoc ? `<div class="card" data-rub="documents">
         <h2>📄 Documents du véhicule</h2>
-        <ul class="liste">${Object.keys(DOCS_VEH).map(ligne).join("")}</ul>
-        <p class="muted">* obligatoires. Vous et votre chauffeur êtes avertis 30 jours avant l’expiration.</p>
+        <ul class="liste">${DOCS_VEH_OBLIG.map(ligne).join("")}</ul>
+        <p class="muted">Vous et votre chauffeur êtes avertis 30 jours avant chaque expiration.</p>
+      </div>` : ""}
+      ${!enAttente ? `<${aucunDoc ? "details" : "div"} class="card" data-rub="documents">
+        ${aucunDoc ? `<summary><b>J’ai déjà certains documents : les enregistrer un par un</b></summary>` : ""}
         <form id="docveh" style="margin-top:12px">
-          <h3>Déposer un document</h3>
+          <h3>Enregistrer un document</h3>
           <label for="dv_type">Document</label>
-          <select id="dv_type">${Object.entries(DOCS_VEH).map(([k, v]) => `<option value="${k}">${v}${DOCS_VEH_OBLIG.includes(k) ? " (obligatoire)" : " (facultatif)"}</option>`).join("")}</select>
+          <select id="dv_type">${Object.entries(DOCS_VEH).map(([k, v]) => `<option value="${k}">${v}</option>`).join("")}</select>
           <div class="row">
             <div><label for="dv_num">Numéro</label><input id="dv_num" required></div>
-            <div><label for="dv_exp">Expire le</label><input id="dv_exp" type="date" required></div>
+            <div><label for="dv_exp">Valable jusqu’au</label><input id="dv_exp" type="date" required></div>
           </div>
-          <button class="btn">Déposer pour vérification</button>
+          <button class="btn">Envoyer pour vérification</button>
         </form>
-      </div>` };
+      </${aucunDoc ? "details" : "div"}>` : ""}
+      ${!aucunDoc && !enAttente && paquets.length ? `<details class="card" data-rub="documents"><summary><b>📦 Renouveler avec un paquet (3, 6 ou 12 mois)</b></summary>${formPaquet}</details>` : ""}
+      ${souscr.some((x) => x.statut === "confirme") ? `<div class="card" data-rub="documents"><h2>🧾 Mes paquets payés</h2><ul class="liste">${souscr.filter((x) => x.statut === "confirme").map((x) => `
+        <li><div class="ligne-haut"><b>${esc(x.paquet_nom)}</b><span class="badge ${x.fin >= auj ? "ok" : ""}">${x.fin >= auj ? "En cours" : "Terminé"}</span></div>
+        <div class="muted">Du ${jourFr(x.debut)} au ${jourFr(x.fin)} · ${montantPaye(x.devise, x.montant)} · ${esc(x.numero)}</div>
+        <button class="btn petit ligne" type="button" data-attpq="${x.id}" style="margin-top:8px">🧾 Attestation de paiement (PDF)</button></li>`).join("")}</ul></div>` : ""}` };
   }
   function activerDocumentsVehicule(vid, retour) {
     $("#docveh")?.addEventListener("submit", async (e) => {
@@ -1922,8 +2030,109 @@
       const { error } = await sb.from("documents_vehicule").insert({ vehicule_id: vid, type: $("#dv_type").value, numero: $("#dv_num").value.trim(), date_expiration: $("#dv_exp").value });
       if (error) return erreur(error);
       journaliser("document véhicule déposé", DOCS_VEH[$("#dv_type").value]);
-      toast("Document déposé. Un agent va le vérifier."); retour();
+      toast("Document envoyé. Un agent va le vérifier."); retour();
     });
+    app.querySelectorAll("[data-attpq]").forEach((b) => b.addEventListener("click", () => telechargerAttestationPaquet(Number(b.dataset.attpq)).catch(erreur)));
+    const f = $("#paquet");
+    if (!f) return;
+    const { paquets, P, taux } = etat.paquetCtx;
+    const choix = () => paquets.find((k) => String(k.id) === f.querySelector("input[name=pq]:checked")?.value) || paquets[0];
+    const consigne = () => {
+      const k = choix(); if (!k) return;
+      const usd = Number(k.prix_usd), dev = $("#q_dev").value, op = $("#q_op").value;
+      const m = dev === "USD" ? usd + " $" : fc(Math.ceil((usd * Number(taux.taux_achat)) / 50) * 50);
+      $("#q_consigne").innerHTML = `Envoyez <b>${m}</b> par <b>${OPERATEURS[op]}</b> au numéro <b>${esc(P["marchand_" + op] || "[numéro à communiquer par MOPILA CHECK]")}</b>, puis notez la référence reçue par SMS.`;
+    };
+    f.querySelectorAll("input[name=pq], #q_op, #q_dev").forEach((x) => x.addEventListener("change", consigne));
+    consigne();
+    f.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      const b = $("#q_ok"); b.disabled = true;
+      const { error } = await sb.rpc("souscrire_paquet", { p_vehicule: vid, p_paquet: choix().id, p_operateur: $("#q_op").value, p_telephone: $("#q_tel").value, p_devise: $("#q_dev").value, p_reference: $("#q_ref").value });
+      b.disabled = false;
+      if (error) return erreur(error);
+      journaliser("paquet documents souscrit", choix().nom);
+      toast("Paiement envoyé. Votre véhicule sera en règle dès la confirmation par un agent."); retour();
+    });
+  }
+
+  /* ---------- Attestation de paiement d'un paquet de documents ---------- */
+  async function telechargerAttestationPaquet(id) {
+    toast("Préparation de l’attestation…");
+    const { data: A, error } = await sb.rpc("attestation_paquet", { p_id: id });
+    if (error) return erreur(error);
+    if (!A) return erreur({ message: "Attestation disponible après la confirmation du paiement." });
+    await chargerScript("https://cdn.jsdelivr.net/npm/jspdf@2.5.1/dist/jspdf.umd.min.js");
+    const S = A.souscription, V = A.vehicule;
+    const tmp = document.createElement("div"); tmp.style.cssText = "position:fixed;left:-9999px"; document.body.appendChild(tmp);
+    new QRCode(tmp, { text: lienQR(V.qr_code), width: 300, height: 300 });
+    await new Promise((res) => setTimeout(res, 300));
+    const qr = tmp.querySelector("canvas")?.toDataURL("image/png") || tmp.querySelector("img")?.src; tmp.remove();
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF({ unit: "mm", format: "a4" });
+    const W = 210, M = 18, nuit = [16, 35, 63], jaune = [242, 183, 5], doux = [74, 85, 104], vert = [31, 122, 77];
+    doc.setFillColor(...nuit); doc.rect(0, 0, W, 38, "F"); doc.setFillColor(...jaune); doc.rect(0, 38, W, 2, "F");
+    doc.setFillColor(...jaune); doc.roundedRect(M, 10, 18, 18, 3, 3, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text("M", M + 9, 22.5, { align: "center" });
+    doc.setTextColor(255, 255, 255); doc.setFontSize(20); doc.text(pdfTxt(NOM_APP), M + 24, 19);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.text(pdfTxt("Le juste prix du transport à Kinshasa · Projet de Mopila Car"), M + 24, 26);
+    let y = 56;
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(19); doc.text(pdfTxt("ATTESTATION DE PAIEMENT"), M, y);
+    doc.setFontSize(13); doc.text(pdfTxt("Paquet documents du véhicule"), M, y + 8);
+    doc.setFont("helvetica", "normal"); doc.setFontSize(10.5); doc.setTextColor(...doux); doc.text(pdfTxt("N° " + S.numero), M, y + 15);
+    doc.setDrawColor(...vert); doc.setLineWidth(1.2); doc.roundedRect(W - M - 44, y - 12, 44, 18, 3, 3, "S");
+    doc.setTextColor(...vert); doc.setFont("helvetica", "bold"); doc.setFontSize(18); doc.text(pdfTxt("PAYÉ"), W - M - 22, y - 1, { align: "center" });
+    doc.setFontSize(8); doc.text(new Date(S.confirme_le).toLocaleDateString("fr-FR"), W - M - 22, y + 4, { align: "center" });
+    y += 26;
+    doc.setFillColor(246, 243, 234); doc.roundedRect(M, y - 6, W - 2 * M, 20, 3, 3, "F");
+    doc.setTextColor(...nuit); doc.setFont("helvetica", "normal"); doc.setFontSize(10.5);
+    const phrase = `${NOM_APP} atteste que ${A.proprietaire.nom || "le propriétaire"} a payé le ${S.paquet_nom} pour le véhicule ${V.plaque}. Le véhicule est en règle du ${jourFr(S.debut)} au ${jourFr(S.fin)} pour les documents ci-dessous.`;
+    doc.text(doc.splitTextToSize(pdfTxt(phrase), W - 2 * M - 8), M + 4, y);
+    y += 24;
+    const section = (t) => { doc.setFillColor(237, 231, 214); doc.rect(M, y - 5, W - 2 * M, 8, "F"); doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(pdfTxt(t), M + 3, y + 0.5); y += 9; };
+    const ligne = (lib, val, gras) => {
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(pdfTxt(lib), M + 3, y);
+      doc.setTextColor(...nuit); doc.setFont("helvetica", gras ? "bold" : "normal"); doc.text(pdfTxt(val ?? "-"), M + 52, y); y += 6.5;
+    };
+    section("Les opérations couvertes par le paquet");
+    doc.setFontSize(9); doc.setTextColor(...doux); doc.setFont("helvetica", "bold");
+    doc.text("N°", M + 3, y); doc.text("Document", M + 12, y); doc.text(pdfTxt("Numéro"), M + 78, y); doc.text("Valable du", M + 120, y); doc.text("au", M + 150, y);
+    y += 2; doc.setDrawColor(226, 220, 203); doc.setLineWidth(0.3); doc.line(M, y, W - M, y); y += 6;
+    (A.documents || []).forEach((d, i) => {
+      doc.setTextColor(...nuit); doc.setFont("helvetica", "bold"); doc.setFontSize(11); doc.text(String(i + 1), M + 3, y);
+      doc.text(pdfTxt(d.nom), M + 12, y);
+      doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(pdfTxt(d.numero), M + 78, y);
+      doc.text(new Date(S.debut).toLocaleDateString("fr-FR"), M + 120, y);
+      doc.setFont("helvetica", "bold"); doc.text(new Date(d.date_expiration).toLocaleDateString("fr-FR"), M + 150, y);
+      y += 3; doc.line(M, y, W - M, y); y += 7;
+    });
+    y += 3; const yQR = y;
+    section("Le véhicule et le paiement");
+    ligne("Plaque", V.plaque, true);
+    ligne("Type", MODES[V.mode] || V.mode);
+    ligne("Propriétaire", A.proprietaire.nom);
+    ligne("Téléphone", A.proprietaire.telephone);
+    ligne("Paquet", `${S.paquet_nom} (${S.duree_mois === 12 ? "1 an" : S.duree_mois + " mois"})`, true);
+    ligne("Période couverte", `du ${jourFr(S.debut)} au ${jourFr(S.fin)}`, true);
+    ligne("Montant payé", (S.devise === "USD" ? `${Number(S.montant)} $` : `${Number(S.montant).toLocaleString("fr-FR")} FC (prix ${Number(S.prix_usd)} $, taux 1 $ = ${Number(S.taux).toLocaleString("fr-FR")} FC)`), true);
+    ligne("Moyen de paiement", OPERATEURS[S.operateur] || S.operateur);
+    ligne("Numéro payeur", S.telephone);
+    ligne("Référence transaction", S.reference_transaction, true);
+    ligne("Confirmé le", dateFr(S.confirme_le));
+    ligne("Confirmé par", A.agent);
+    if (qr) {
+      doc.addImage(qr, "PNG", W - M - 40, yQR + 6, 40, 40);
+      doc.setTextColor(...doux); doc.setFont("helvetica", "normal"); doc.setFontSize(8);
+      doc.text(doc.splitTextToSize(pdfTxt("Scannez pour vérifier le véhicule"), 40), W - M - 20, yQR + 50, { align: "center" });
+    }
+    y += 6; doc.setDrawColor(226, 220, 203); doc.line(M, y, W - M, y); y += 7;
+    doc.setTextColor(...doux); doc.setFontSize(9);
+    doc.text(doc.splitTextToSize(pdfTxt("Attestation générée automatiquement après la confirmation du paiement par un agent. Elle reste disponible dans l'espace du propriétaire. La situation du véhicule peut être vérifiée à tout moment en scannant son QR code."), W - 2 * M), M, y);
+    doc.text(pdfTxt(`Éditée le ${new Date().toLocaleString("fr-FR")}`), M, y + 14);
+    doc.line(M, 285, W - M, 285); doc.setFontSize(8); doc.text(pdfTxt(`${NOM_APP} - Projet de Mopila Car - ${S.numero}`), M, 290);
+    doc.save(`Attestation_paquet_${V.plaque}_${S.numero}.pdf`);
+    journaliser("attestation paquet téléchargée", S.numero);
   }
 
   /* ---------- Propriétaire : versements d'un véhicule ---------- */
@@ -2002,6 +2211,7 @@
           v.chauffeur_id && !v.chauffeur_conforme ? "chauffeur non conforme" : "",
           v.doc_alerte ? "permis du chauffeur bientôt expiré" : "",
           v.plaintes_ouvertes ? v.plaintes_ouvertes + " plainte(s) en cours" : ""].filter(Boolean).join(" · ")}</span></li>`).join("")}</ul></div>` : ""}
+      ${htmlDocsExiges(false)}
       <details class="card" id="dispo" ${p.dispo ? "open" : ""}><summary><b>🚖 Chauffeurs sans véhicule (${libres.length})</b></summary>
         <p class="muted" style="margin-top:8px">Chauffeurs inscrits qui n’ont aucun véhicule en ce moment. Appelez-les, puis demandez-leur leur code chauffeur pour les affecter.</p>
         <ul class="liste">${libres.map((c) => `<li><div class="ligne-haut"><b>${esc(c.nom)}</b>${c.telephone
@@ -2041,7 +2251,7 @@
       e.preventDefault();
       const { data, error } = await sb.from("vehicules").insert({ plaque: $("#plaque").value.trim().toUpperCase().replace(/\s+/g, ""), mode: $("#mode").value, proprietaire_id: uid }).select("id").single();
       if (error) return erreur(error.code === "23505" ? { message: "Cette plaque est déjà enregistrée." } : error);
-      toast("Véhicule enregistré. Déposez maintenant l’assurance et le contrôle technique.");
+      toast("Véhicule enregistré. Mettez-le maintenant en règle : documents ou paquet.");
       location.hash = "#/proprietaire?v=" + data.id + "&r=documents";
     });
     $("#exp-flotte")?.addEventListener("click", () => telechargerCSV("ma_flotte", [
@@ -2096,8 +2306,8 @@
         ${docsV.conforme ? `<form id="affecter" style="margin-top:10px">
           <label>${ch ? "Changer de chauffeur" : "Affecter un chauffeur"} (code chauffeur)</label>
           <div class="row"><input name="code" required placeholder="Code donné par le chauffeur"><button class="btn petit">Affecter</button></div>
-        </form>` : `<div class="card accent" style="margin:10px 0 0">🔒 Pour affecter un chauffeur, le véhicule doit être <b>conforme</b> : assurance et contrôle technique vérifiés par un agent.
-          <a class="btn petit ligne" style="margin-top:8px" href="#/proprietaire?v=${id}&r=documents">📄 Déposer les documents</a></div>`}
+        </form>` : `<div class="card accent" style="margin:10px 0 0">🔒 Pour affecter un chauffeur, le véhicule doit être <b>en règle</b> : les 4 documents vérifiés et valides.
+          <a class="btn petit ligne" style="margin-top:8px" href="#/proprietaire?v=${id}&r=documents">📄 Mettre le véhicule en règle</a></div>`}
         ${s.historique.length > 1 ? `<details style="margin-top:10px"><summary class="muted">Historique des chauffeurs (${s.historique.length})</summary>
           <ul class="liste">${s.historique.map((h) => `<li>${esc(h.nom || "—")} <span class="muted">· du ${dateFr(h.debut)}${h.fin ? " au " + dateFr(h.fin) : " à aujourd’hui"}</span></li>`).join("")}</ul></details>` : ""}
       </div>
@@ -2849,6 +3059,13 @@
       .afaire{display:flex;justify-content:space-between;align-items:center;gap:10px;text-decoration:none;color:var(--nuit);font-weight:600}
       .afaire b{color:var(--ocre);font-size:20px}
       .recherche input,.recherche select{margin:0}
+      .paquets{display:grid;gap:10px;margin:12px 0}
+      .paquet{display:flex;align-items:center;gap:12px;border:2px solid var(--bord);border-radius:var(--rayon);padding:12px 14px;background:var(--carte);cursor:pointer;margin:0}
+      .paquet input{width:auto;margin:0;accent-color:var(--nuit)}
+      .paquet span:first-of-type{flex:1;display:flex;flex-direction:column}
+      .paquet small{color:var(--doux);font-weight:400}
+      .paquet .prix{font-family:'Oswald',Arial,sans-serif;font-size:22px;font-weight:700;text-align:right;display:flex;flex-direction:column}
+      .paquet:has(input:checked){border-color:var(--jaune);background:#FFF8E1}
       .tabbar a.tab-scan .pastille{display:none}
       .onglets button .pastille{margin-left:6px;box-shadow:none}
       .onglets button.actif .pastille{box-shadow:0 0 0 2px #10233F}
@@ -2901,7 +3118,7 @@
           compter("vehicules", (q) => q.eq("agree", false)),
           compter("evaluations", (q) => q.gt("date_heure", depuisAvis)),
           sb.from("recidivistes").select("vehicule_id", { count: "exact", head: true }).then((r) => r.count || 0, () => 0),
-          compter("paiements", (q) => q.eq("statut", "en_attente")),
+          Promise.all([compter("paiements", (q) => q.eq("statut", "en_attente")), compter("souscriptions_paquet", (q) => q.eq("statut", "en_attente"))]).then(([a, b]) => a + b),
           compter("messages_agents", (q) => q.eq("statut", "ouvert"))
         ]);
         Object.assign(onglets, { signalements: sig, documents: docs, vehicules: veh, avis, recidivistes: recid, paiements: pay, messages: msgs });
@@ -2910,7 +3127,7 @@
           onglets.utilisateurs = await compter("profils", (q) => q.gt("created_at", depuisUsers));
         }
         tabs.admin = Object.values(onglets).reduce((a, b) => a + b, 0) - (onglets.recidivistes || 0);
-        [["signalements", "signalement(s) à traiter"], ["paiements", "paiement(s) d’inscription à confirmer"], ["documents", "document(s) à vérifier (permis et véhicules)"],
+        [["signalements", "signalement(s) à traiter"], ["paiements", "paiement(s) à confirmer (inscriptions et paquets)"], ["documents", "document(s) à vérifier (permis et véhicules)"],
           ["messages", "message(s) de chauffeurs sans réponse"], ["vehicules", "véhicule(s) à agréer"]]
           .forEach(([k, lib]) => { if (onglets[k]) afaire.push([`${onglets[k]} ${lib}`, "#/admin?o=" + k]); });
       }
@@ -2993,7 +3210,7 @@
   // Supabase Realtime envoie chaque changement de la base (en respectant les règles de sécurité :
   // chacun ne reçoit que ce qu'il a le droit de voir). L'écran ouvert se met à jour tout seul.
   const TABLES_TEMPS_REEL = ["signalements", "evaluations", "paiements", "documents_chauffeur", "vehicules", "affectations",
-    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents", "versements", "documents_vehicule"];
+    "chauffeurs", "profils", "incidents", "tarifs", "lieux", "arretes", "courses", "taux_change", "parametres", "associations", "chauffeurs_historique", "messages_agents", "versements", "documents_vehicule", "souscriptions_paquet"];
   let canalTempsReel = null, minuterieTR = null, tablesTouchees = new Set();
 
   function utilisateurOccupe() {
